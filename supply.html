@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FastOrder — Supply Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0c0f14; --surface:#151921; --surface2:#1c2230; --border:#2a3042; --text:#e4e8f1; --text-dim:#7a839b; --accent:#6c8cff; --accent-glow:rgba(108,140,255,0.15); --green:#5bdb8a; --green-glow:rgba(91,219,138,0.15); --red:#ff6b6b; --red-glow:rgba(255,107,107,0.12); --yellow:#ffd36b; --radius:10px; --radius-sm:6px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Outfit',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  .header { display:flex; align-items:center; justify-content:space-between; padding:20px 32px; border-bottom:1px solid var(--border); background:var(--surface); }
+  .header h1 { font-size:20px; font-weight:700; display:flex; align-items:center; gap:10px; }
+  .header h1 span { background:linear-gradient(135deg,var(--accent),#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-links { display:flex; gap:10px; }
+  .header-links a { padding:8px 16px; border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-dim); text-decoration:none; font-size:13px; font-weight:600; }
+  .header-links a:hover { color:var(--text); border-color:var(--accent); }
+
+  .main { max-width:1100px; margin:0 auto; padding:24px 32px; }
+
+  .stats-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-bottom:24px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+  .stat-card .label { font-size:11px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; }
+  .stat-card .value { font-size:26px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .stat-card.green .value { color:var(--green); }
+  .stat-card.red .value { color:var(--red); }
+  .stat-card.blue .value { color:var(--accent); }
+  .stat-card.yellow .value { color:var(--yellow); }
+
+  .search-bar { margin-bottom:16px; }
+  .search-bar input { width:100%; max-width:400px; padding:10px 16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-size:14px; font-family:inherit; outline:none; }
+  .search-bar input:focus { border-color:var(--accent); }
+
+  .product-table { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { padding:12px 16px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); text-align:left; background:var(--surface2); border-bottom:1px solid var(--border); }
+  tbody td { padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+  tbody tr:hover { background:var(--surface2); }
+  tbody tr:last-child td { border-bottom:none; }
+
+  .stock-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .stock-badge.ok { background:var(--green-glow); color:var(--green); }
+  .stock-badge.low { background:var(--red-glow); color:var(--red); }
+  .stock-badge.out { background:var(--red-glow); color:var(--red); }
+
+  .qty-controls { display:flex; align-items:center; gap:6px; }
+  .qty-btn { width:30px; height:30px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:inherit; transition:all 0.15s; }
+  .qty-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .qty-display { font-family:'JetBrains Mono',monospace; font-weight:600; font-size:15px; min-width:30px; text-align:center; }
+
+  .btn-buy-stock { padding:6px 16px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+  .btn-buy-stock:hover { background:#8aa4ff; }
+  .btn-buy-stock:disabled { opacity:0.3; cursor:not-allowed; }
+
+  .cost-preview { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--yellow); font-weight:600; min-width:80px; }
+
+  .toast-container { position:fixed; bottom:24px; right:24px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+  .toast { padding:12px 20px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; color:#fff; animation:slideIn .3s ease,fadeOut .3s ease 2.5s forwards; }
+  .toast.success { background:#1a7a42; } .toast.error { background:#b33030; }
+  @keyframes slideIn { from{transform:translateX(40px);opacity:0} to{transform:translateX(0);opacity:1} }
+  @keyframes fadeOut { to{opacity:0} }
+
+  @media(max-width:768px) { .main{padding:16px} table{min-width:700px} .product-table{overflow-x:auto} }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📦 <span>Supply Manager</span></h1>
+  <div class="header-links">
+    <a href="/">🗂️ Admin Panel</a>
+    <a href="/shop">🏪 Customer Shop</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card green"><div class="label">💰 Total Revenue</div><div class="value" id="stat-revenue">$0</div></div>
+    <div class="stat-card red"><div class="label">📦 Supply Costs</div><div class="value" id="stat-supply">$0</div></div>
+    <div class="stat-card blue"><div class="label">💎 Available Balance</div><div class="value" id="stat-balance">$0</div></div>
+    <div class="stat-card yellow"><div class="label">📊 Total Products</div><div class="value" id="stat-products">0</div></div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search products to restock..." oninput="renderTable()">
+  </div>
+
+  <div class="product-table">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Product</th>
+          <th>Brand</th>
+          <th>Retail Price</th>
+          <th>Wholesale (60%)</th>
+          <th>Current Stock</th>
+          <th>Buy Quantity</th>
+          <th>Cost</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = window.location.origin;
+let products = [];
+let quantities = {}; // { productId: qty }
+let balance = 0;
+
+function toast(m, t="success") { const d=document.createElement("div"); d.className="toast "+t; d.textContent=m; document.getElementById("toasts").appendChild(d); setTimeout(()=>d.remove(),3000); }
+function esc(s) { if(!s)return""; const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+const USD_TO_INR = 83.50;
+function fmt(n) { const inr=(n||0)*USD_TO_INR; return "₹"+inr.toLocaleString("en-IN",{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+async function loadData() {
+  try {
+    const res = await fetch(API + "/api/supply/products");
+    const data = await res.json();
+    products = data.products || [];
+    balance = data.balance || 0;
+
+    document.getElementById("stat-revenue").textContent = fmt(data.revenue || 0);
+    document.getElementById("stat-supply").textContent = fmt(data.supplyCost || 0);
+    document.getElementById("stat-balance").textContent = fmt(balance);
+    document.getElementById("stat-products").textContent = products.length;
+
+    // Initialize quantities
+    products.forEach(p => { if (!(p.Id in quantities)) quantities[p.Id] = 0; });
+    renderTable();
+  } catch { toast("Failed to load data.", "error"); }
+}
+
+function renderTable() {
+  const search = document.getElementById("searchInput").value.toLowerCase().trim();
+  const filtered = search ? products.filter(p => p.ProductName.toLowerCase().includes(search) || (p.Brand||"").toLowerCase().includes(search)) : products;
+  const tb = document.getElementById("tableBody");
+
+  tb.innerHTML = filtered.map(p => {
+    const stock = p.Stock || 0;
+    const qty = quantities[p.Id] || 0;
+    const wholesale = p.UnitPrice * 0.6;
+    const cost = wholesale * qty;
+    let stockClass = "ok";
+    let stockLabel = stock;
+    if (stock <= 0) { stockClass = "out"; stockLabel = "OUT"; }
+    else if (stock <= 10) { stockClass = "low"; }
+
+    return `<tr>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text-dim)">${p.Id}</td>
+      <td style="font-weight:600">${esc(p.ProductName)}</td>
+      <td style="color:var(--accent);font-weight:600;font-size:12px">${esc(p.Brand)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${fmt(p.UnitPrice)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(wholesale)}</td>
+      <td><span class="stock-badge ${stockClass}">${stockLabel}</span></td>
+      <td>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="changeQty(${p.Id},-1)">−</button>
+          <span class="qty-display">${qty}</span>
+          <button class="qty-btn" onclick="changeQty(${p.Id},1)">+</button>
+          <button class="qty-btn" onclick="changeQty(${p.Id},10)" title="+10" style="font-size:11px;width:36px">+10</button>
+        </div>
+      </td>
+      <td><span class="cost-preview">${qty > 0 ? fmt(cost) : "—"}</span></td>
+      <td><button class="btn-buy-stock" onclick="buyStock(${p.Id})" ${qty < 1 ? "disabled" : ""}>Buy Stock</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function changeQty(pid, delta) {
+  const current = quantities[pid] || 0;
+  const newQty = Math.max(0, current + delta);
+  quantities[pid] = newQty;
+  renderTable();
+}
+
+async function buyStock(pid) {
+  const qty = quantities[pid] || 0;
+  if (qty < 1) return;
+  try {
+    const res = await fetch(API + "/api/supply/buy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: pid, quantity: qty })
+    });
+    const data = await res.json();
+    if (!res.ok) { toast(data.error || "Failed.", "error"); return; }
+    toast(data.message);
+    quantities[pid] = 0;
+    loadData();
+  } catch { toast("Failed to buy stock.", "error"); }
+}
+
+loadData();
+</script>
+</body>
+</html>

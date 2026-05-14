@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>FastOrder — Electronics Shop</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf9f7; --surface: #ffffff; --surface2: #f3f1ee;
+    --border: #e5e2dc; --border-hover: #ccc8c0;
+    --text: #1a1815; --text-dim: #8a857c; --text-mid: #5c574f;
+    --accent: #2563eb; --accent-hover: #1d4ed8; --accent-glow: rgba(37,99,235,0.08); --accent-light: #eff6ff;
+    --green: #16a34a; --green-bg: #f0fdf4; --green-border: #bbf7d0;
+    --red: #dc2626; --red-bg: #fef2f2;
+    --yellow: #f59e0b;
+    --radius: 12px; --radius-sm: 8px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap}
+  .logo{font-size:22px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:10px}
+  .logo .dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
+  .header-right{display:flex;align-items:center;gap:12px}
+  .nav-btn{padding:8px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;border:1px solid var(--border);background:var(--surface);color:var(--text);position:relative}
+  .nav-btn:hover{border-color:var(--border-hover);background:var(--surface2)}
+  .nav-btn.accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .cart-count{position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:10px;font-weight:700;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .user-badge{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--text-mid)}
+  .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+  .btn-logout{background:none;border:none;color:var(--text-dim);font-size:13px;font-family:inherit;cursor:pointer;text-decoration:underline}
+  .auth-overlay{display:flex;align-items:center;justify-content:center;min-height:calc(100vh - 62px);padding:24px}
+  .auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+  .auth-card h2{font-size:24px;font-weight:700;margin-bottom:6px}
+  .auth-card .subtitle{color:var(--text-dim);font-size:14px;margin-bottom:28px}
+  .auth-field{margin-bottom:16px}
+  .auth-field label{display:block;font-size:13px;font-weight:600;color:var(--text-mid);margin-bottom:6px}
+  .auth-field input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:15px;font-family:inherit;outline:none;background:var(--bg)}
+  .auth-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+  .auth-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;margin-top:8px}
+  .auth-btn:hover{background:var(--accent-hover)}
+  .auth-switch{text-align:center;margin-top:20px;font-size:14px;color:var(--text-dim)}
+  .auth-switch a{color:var(--accent);font-weight:600;cursor:pointer}
+  .auth-error{background:var(--red-bg);border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:var(--radius-sm);font-size:13px;margin-bottom:16px;display:none}
+  .auth-error.show{display:block}
+  .auth-name-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .page{display:none}.page.active{display:block}
+  .shop-layout{display:flex;max-width:1400px;margin:0 auto}
+  /* FILTER SIDEBAR */
+  .filter-sidebar{width:250px;min-width:250px;background:var(--surface);border-right:1px solid var(--border);padding:18px;position:sticky;top:62px;height:calc(100vh - 62px);overflow-y:auto}
+  .filter-sidebar::-webkit-scrollbar{width:4px}.filter-sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .filter-section{margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  .filter-section:last-child{border-bottom:none}
+  .filter-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+  .filter-option{display:flex;align-items:center;gap:8px;padding:3px 0;cursor:pointer;font-size:13px;color:var(--text-mid)}
+  .filter-option:hover{color:var(--text)}
+  .filter-option input{accent-color:var(--accent);cursor:pointer}
+  .filter-option label{cursor:pointer;flex:1}
+  .price-presets{display:flex;flex-direction:column;gap:2px}
+  .price-presets button{background:none;border:none;text-align:left;padding:4px 0;font-size:13px;font-family:inherit;color:var(--accent);cursor:pointer;font-weight:500}
+  .price-presets button:hover{text-decoration:underline}
+  .price-inputs{display:flex;gap:6px;align-items:center;margin-top:8px}
+  .price-inputs input{width:75px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:inherit;outline:none}
+  .price-inputs input:focus{border-color:var(--accent)}
+  .price-inputs .go-btn{padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+  .rating-option{display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer;font-size:13px}
+  .rating-option:hover{color:var(--text)}
+  .rating-option .stars{color:var(--yellow);font-size:14px}
+  .btn-clear-all{width:100%;padding:8px;background:none;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;color:var(--text-dim);margin-top:6px}
+  .btn-clear-all:hover{color:var(--red);border-color:var(--red)}
+  /* SHOP CONTENT */
+  .shop-content{flex:1;padding:18px 24px;min-width:0}
+  .results-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+  .results-count{font-size:14px;color:var(--text-mid)}.results-count strong{color:var(--text)}
+  .sort-bar{display:flex;align-items:center;gap:6px}
+  .sort-bar label{font-size:12px;font-weight:600;color:var(--text-mid)}
+  .sort-select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit;background:var(--surface);cursor:pointer}
+  .active-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .active-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--accent-light);border:1px solid #bfdbfe;border-radius:20px;font-size:11px;font-weight:600;color:var(--accent)}
+  .active-tag button{background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;font-weight:700}
+  .shop-search{padding:10px 16px 10px 40px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;font-family:inherit;outline:none;width:300px;max-width:100%;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a857c' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 14px center no-repeat}
+  .shop-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .product-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:all .2s}
+  .product-card:hover{border-color:var(--border-hover);box-shadow:0 4px 20px rgba(0,0,0,.06);transform:translateY(-2px)}
+  .product-img{height:190px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#fff;cursor:pointer}
+  .product-img .img-icon{font-size:52px;z-index:1}
+  .product-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:14px;background:#fff;z-index:2}
+  .product-img .fallback{display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+  .card-body{padding:12px 16px 16px}
+  .card-body .brand-tag{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.3px}
+  .card-body .pname{font-size:14px;font-weight:600;margin:4px 0;line-height:1.3;cursor:pointer;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card-body .pname:hover{color:var(--accent)}
+  .card-body .price-tag{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;margin:4px 0}
+  .card-body .rating-row{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-dim);margin-bottom:4px}
+  .card-body .stars{color:var(--yellow)}
+  .stock-text{font-size:12px;font-weight:600;margin-bottom:8px}
+  .stock-low{color:var(--red)}.stock-ok{color:var(--green)}.stock-out{color:var(--red);font-weight:700}
+  .btn-disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+  .card-body .card-actions{display:flex;gap:8px}
+  .btn-cart,.btn-buy{flex:1;padding:9px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s;border:1px solid;text-align:center}
+  .btn-cart{background:var(--surface);border-color:var(--border);color:var(--text)}.btn-cart:hover{background:var(--surface2)}
+  .btn-buy{background:var(--accent);border-color:var(--accent);color:#fff}.btn-buy:hover{background:var(--accent-hover)}
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center;padding:24px;overflow-y:auto}
+  .modal-overlay.show{display:flex}
+  .modal{background:var(--surface);border-radius:16px;padding:36px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.15);animation:modalIn .25s ease;text-align:center}
+  @keyframes modalIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+  .modal .check{width:56px;height:56px;border-radius:50%;background:var(--green-bg);border:2px solid var(--green-border);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px}
+  .modal h3{font-size:20px;font-weight:700;margin-bottom:8px}
+  .modal .detail{font-size:14px;color:var(--text-mid);line-height:1.8}.modal .detail strong{color:var(--text)}
+  .modal .shipping-box{background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius-sm);padding:14px;margin:16px 0;text-align:left}
+  .modal .shipping-box .ship-title{font-weight:700;color:var(--green);font-size:14px}
+  .modal .shipping-box .ship-date{font-size:15px;font-weight:600;margin-top:4px}
+  .modal .btn-close-modal{margin-top:16px;padding:12px 32px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer}
+  .modal.product-detail-modal{max-width:860px;padding:0;overflow:hidden;text-align:left}
+  .detail-layout{display:grid;grid-template-columns:minmax(260px,42%) 1fr}
+  .detail-image{min-height:360px;background:#fff;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border)}
+  .detail-image img{width:100%;height:360px;object-fit:contain;padding:24px}
+  .detail-info{padding:28px;max-height:80vh;overflow-y:auto}
+  .detail-info h3{font-size:22px;line-height:1.25;margin-bottom:4px}
+  .detail-info .detail-brand{font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .detail-info .detail-price{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:800;color:var(--accent);margin:10px 0}
+  .detail-info .detail-rating{display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:6px}.detail-info .stars{color:var(--yellow);font-size:16px}
+  .detail-specs{display:grid;gap:6px;margin:14px 0}
+  .detail-specs .spec-row{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px}
+  .detail-specs .spec-row strong{color:var(--text)}
+  .detail-actions{display:flex;gap:10px;margin-top:14px}.detail-actions button{flex:1;padding:12px}
+  .delivery-info{margin-top:12px;padding:10px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:var(--radius-sm);font-size:12px;color:var(--green);font-weight:600}
+  .reviews-section{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+  .reviews-section h4{font-size:14px;font-weight:700;margin-bottom:10px}
+  .review-form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:var(--radius-sm)}
+  .star-picker{display:flex;gap:2px;font-size:22px;cursor:pointer;color:var(--yellow)}.star-picker span{opacity:.25;transition:opacity .1s}.star-picker span.active{opacity:1}
+  .review-textarea{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;resize:vertical;min-height:50px;outline:none}.review-textarea:focus{border-color:var(--accent)}
+  .review-submit{padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;align-self:flex-start}
+  .review-card{padding:8px 0;border-bottom:1px solid var(--border)}.review-card:last-child{border-bottom:none}
+  .rev-top{display:flex;justify-content:space-between;margin-bottom:2px}.rev-author{font-weight:600;font-size:12px}.rev-date{font-size:10px;color:var(--text-dim)}
+  .rev-stars{color:var(--yellow);font-size:12px}.rev-text{font-size:12px;color:var(--text-mid);margin-top:2px}
+  .main{padding:24px 32px;max-width:1000px;margin:0 auto}
+  .cart-empty{text-align:center;padding:60px 20px;color:var(--text-dim)}
+  .cart-item{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)}.cart-item:last-child{border-bottom:none}
+  .cart-item .info{flex:1}.cart-item .info .name{font-weight:600;font-size:14px}.cart-item .info .price{font-family:'JetBrains Mono',monospace;color:var(--text-mid);font-size:12px;margin-top:2px}
+  .qty-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .cart-item .qty-controls{display:flex;align-items:center;gap:6px}.cart-item .qty{font-family:'JetBrains Mono',monospace;font-weight:600;min-width:20px;text-align:center}
+  .cart-item .line-total{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent);min-width:70px;text-align:right}
+  .cart-item .btn-remove{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px}.cart-item .btn-remove:hover{color:var(--red)}
+  .cart-summary{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:16px}
+  .cart-summary .total-row{display:flex;justify-content:space-between;font-size:18px;font-weight:700;margin-bottom:14px}.cart-summary .total-row .amount{font-family:'JetBrains Mono',monospace;color:var(--accent)}
+  .btn-checkout{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:var(--radius-sm);font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}.btn-checkout:hover{background:#15803d}
+  .order-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px}
+  .order-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+  .order-header .order-num{font-weight:700;font-size:14px}.order-header .order-date{font-size:12px;color:var(--text-dim)}.order-header .order-total{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--accent)}
+  .order-items-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}.order-item-row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-mid)}
+  .order-shipping{background:var(--surface2);border-radius:var(--radius-sm);padding:8px 12px;font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}.order-shipping .shipper-name{font-weight:600}.order-shipping .est-date{font-weight:600;color:var(--green)}
+  .empty-orders{text-align:center;padding:60px 20px;color:var(--text-dim)}
+  .toast-container{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
+  .toast{padding:12px 20px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;color:#fff;animation:slideIn .3s ease,fadeOut .3s ease 2.5s forwards}
+  .toast.success{background:var(--green)}.toast.error{background:var(--red)}
+  @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+  @keyframes fadeOut{to{opacity:0}}
+  .filter-toggle{display:none;position:fixed;bottom:20px;left:20px;padding:10px 20px;background:var(--accent);color:#fff;border:none;border-radius:24px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.3);z-index:60}
+  @media(max-width:768px){.filter-sidebar{display:none;position:fixed;top:0;left:0;height:100vh;z-index:100;width:280px;box-shadow:4px 0 20px rgba(0,0,0,.1)}.filter-sidebar.open{display:block}.filter-toggle{display:block}.product-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}.detail-layout{grid-template-columns:1fr}.detail-image{min-height:240px;border-right:none;border-bottom:1px solid var(--border)}.detail-image img{height:240px}.shop-search{width:100%}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo"><div class="dot"></div>FastOrder</div>
+  <div class="header-right" id="headerRight"></div>
+</div>
+<div class="page" id="page-login"><div class="auth-overlay"><div class="auth-card"><h2>Welcome back</h2><p class="subtitle">Log in to your FastOrder account</p><div class="auth-error" id="login-error"></div><div class="auth-field"><label>Email</label><input type="email" id="login-email" placeholder="you@FastOrder.com"></div><div class="auth-field"><label>Password</label><input type="password" id="login-pw" placeholder="Enter your password"></div><div style="display:flex;align-items:center;gap:8px;margin:8px 0 4px"><input type="checkbox" id="remember-me" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer"><label for="remember-me" style="font-size:13px;color:var(--text-mid);cursor:pointer">Remember me</label></div><button class="auth-btn" onclick="doLogin()">Log In</button><div class="auth-switch">Don't have an account? <a onclick="showPage('signup')">Sign Up</a></div></div></div></div>
+<div class="page" id="page-signup"><div class="auth-overlay"><div class="auth-card"><h2>Create an account</h2><p class="subtitle">Join FastOrder and start shopping</p><div class="auth-error" id="signup-error"></div><div class="auth-name-row"><div class="auth-field"><label>First Name</label><input id="signup-fn"></div><div class="auth-field"><label>Last Name</label><input id="signup-ln"></div></div><div class="auth-field"><label>Email</label><input type="email" id="signup-email"></div><div class="auth-field"><label>Password</label><input type="password" id="signup-pw" placeholder="Min 4 characters"></div><button class="auth-btn" onclick="doSignup()">Create Account</button><div class="auth-switch">Already have an account? <a onclick="showPage('login')">Log In</a></div></div></div></div>
+
+<div class="page" id="page-shop"><div class="shop-layout">
+  <div class="filter-sidebar" id="filterSidebar">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-size:15px;font-weight:700">Filters</span><button class="btn-clear-all" onclick="clearAllFilters()" style="width:auto;padding:4px 10px;margin:0">Clear All</button></div>
+    <div class="filter-section" id="filterCategories"><div class="filter-title">Category</div></div>
+    <div class="filter-section" id="filterBrands"><div class="filter-title">Brand</div></div>
+    <div class="filter-section"><div class="filter-title">Price</div>
+      <div class="price-presets"><button onclick="setPrice(0,100)">Under ₹8,350</button><button onclick="setPrice(100,500)">₹8,350 – ₹41,750</button><button onclick="setPrice(500,1000)">₹41,750 – ₹83,500</button><button onclick="setPrice(1000,2000)">₹83,500 – ₹1,67,000</button><button onclick="setPrice(2000,0)">₹1,67,000 & above</button></div>
+      <div class="price-inputs"><input type="number" id="f-min" placeholder="Min ₹"><span style="color:var(--text-dim)">to</span><input type="number" id="f-max" placeholder="Max ₹"><button class="go-btn" onclick="applyPriceInputs()">Go</button></div>
+    </div>
+    <div class="filter-section"><div class="filter-title">Customer Rating</div>
+      <div class="rating-option" onclick="setRating(4)"><span class="stars">★★★★☆</span> <span style="font-size:11px;color:var(--text-dim)">& up</span></div>
+      <div class="rating-option" onclick="setRating(3)"><span class="stars">★★★☆☆</span> <span style="font-size:11px;color:var(--text-dim)">& up</span></div>
+      <div class="rating-option" onclick="setRating(2)"><span class="stars">★★☆☆☆</span> <span style="font-size:11px;color:var(--text-dim)">& up</span></div>
+    </div>
+  </div>
+  <div class="shop-content">
+    <div class="results-bar"><div><input type="text" class="shop-search" id="shop-search" placeholder="Search laptops, phones, GPUs..."><div class="results-count" id="results-count" style="margin-top:6px"></div></div>
+    <div class="sort-bar"><label>Sort by:</label><select class="sort-select" id="f-sort" onchange="applyFilters()"><option value="featured">Featured</option><option value="price_asc">Price: Low to High</option><option value="price_desc">Price: High to Low</option><option value="rating">Avg. Customer Reviews</option><option value="newest">Newest Arrivals</option><option value="name_asc">Name: A to Z</option><option value="name_desc">Name: Z to A</option></select></div></div>
+    <div class="active-filters" id="activeFilters"></div>
+    <div class="product-grid" id="product-grid"></div>
+  </div>
+</div><button class="filter-toggle" onclick="document.getElementById('filterSidebar').classList.toggle('open')">🔍 Filters</button></div>
+
+<div class="page" id="page-cart"><div class="main"><h2 style="font-size:20px;font-weight:700;margin-bottom:16px">🛒 Your Cart</h2><div id="cart-items"></div><div id="cart-summary-wrap"></div></div></div>
+<div class="page" id="page-orders"><div class="main"><h2 style="font-size:20px;font-weight:700;margin-bottom:16px">📦 My Orders</h2><div id="orders-list"></div></div></div>
+<div class="modal-overlay" id="modal-overlay"><div class="modal" id="modal-content"></div></div>
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API=window.location.origin;
+let user=null,cartCount=0,searchTimer=null,shopProducts=[],filterData=null;
+let filters={search:"",brands:[],category:"",minPrice:"",maxPrice:"",minRating:"",sort:"featured"};
+
+function toast(m,t="success"){const d=document.createElement("div");d.className="toast "+t;d.textContent=m;document.getElementById("toasts").appendChild(d);setTimeout(()=>d.remove(),3000)}
+function esc(s){if(!s)return"";const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function starsHtml(r,sz=13){let s="";for(let i=1;i<=5;i++)s+=i<=Math.round(r)?"★":"☆";return`<span class="stars" style="font-size:${sz}px">${s}</span>`}
+function fmtDate(s){if(!s)return"";try{return new Date(s).toLocaleDateString("en-US",{year:"numeric",month:"short",day:"numeric"})}catch{return s}}
+
+// ── CURRENCY (USD → INR conversion) ──
+const USD_TO_INR = 83.50; // Exchange rate: 1 USD = 83.50 INR
+function price(amt){const inr=Number(amt||0)*USD_TO_INR;return"₹"+inr.toLocaleString("en-IN",{minimumFractionDigits:0,maximumFractionDigits:0})}
+
+// ── LANGUAGE SYSTEM ──
+let curLang=localStorage.getItem("fastorder_lang")||"en";
+const LANGS={
+  en:{welcome:"Welcome back",login_sub:"Log in to your FastOrder account",login_btn:"Log In",signup_title:"Create an account",signup_sub:"Join FastOrder and start shopping",signup_btn:"Create Account",email:"Email",password:"Password",first_name:"First Name",last_name:"Last Name",no_account:"Don't have an account?",has_account:"Already have an account?",remember:"Remember me",products:"Products",results:"results",search_ph:"Search laptops, phones, GPUs...",sort_by:"Sort by:",featured:"Featured",price_low:"Price: Low to High",price_high:"Price: High to Low",avg_reviews:"Avg. Customer Reviews",newest:"Newest Arrivals",name_az:"Name: A to Z",name_za:"Name: Z to A",category:"Category",brand:"Brand",price_label:"Price",rating:"Customer Rating",and_up:"& up",clear_all:"Clear All",all:"All",under:"Under",above:"& above",add_cart:"Add to Cart",buy_now:"Buy Now",out_stock:"Out of Stock",in_stock:"In Stock",only_left:"left in stock!",your_cart:"🛒 Your Cart",cart_empty:"Your cart is empty",browse:"Browse Products",total:"Total",items:"items",place_order:"Place Order",my_orders:"📦 My Orders",no_orders:"No orders yet",start_shopping:"Start Shopping",order_placed:"Order Placed!",continue:"Continue Shopping",arrives:"Arrives",shop:"Shop",cart:"Cart",orders:"Orders",log_out:"Log out",reviews:"reviews",write_review:"Write a Review",submit:"Submit",login_review:"Log in to review.",no_reviews:"No reviews yet.",close:"Close",free_delivery:"🚚 FREE Delivery — Estimated 1-5 business days",specs:"Specifications",each:"each",unavailable:"Unavailable",more_supply:"More supply needed",order_soon:"order soon!"},
+  hi:{welcome:"वापस स्वागत है",login_sub:"अपने FastOrder खाते में लॉग इन करें",login_btn:"लॉग इन",signup_title:"खाता बनाएं",signup_sub:"FastOrder से जुड़ें और खरीदारी शुरू करें",signup_btn:"खाता बनाएं",email:"ईमेल",password:"पासवर्ड",first_name:"पहला नाम",last_name:"अंतिम नाम",no_account:"खाता नहीं है?",has_account:"पहले से खाता है?",remember:"मुझे याद रखें",products:"उत्पाद",results:"परिणाम",search_ph:"लैपटॉप, फ़ोन, GPU खोजें...",sort_by:"क्रमबद्ध करें:",featured:"विशेष",price_low:"कीमत: कम से ज़्यादा",price_high:"कीमत: ज़्यादा से कम",avg_reviews:"ग्राहक समीक्षा",newest:"नवीनतम",name_az:"नाम: A से Z",name_za:"नाम: Z से A",category:"श्रेणी",brand:"ब्रांड",price_label:"कीमत",rating:"ग्राहक रेटिंग",and_up:"और ऊपर",clear_all:"सब हटाएं",all:"सभी",under:"से कम",above:"और ऊपर",add_cart:"कार्ट में डालें",buy_now:"अभी खरीदें",out_stock:"स्टॉक में नहीं",in_stock:"स्टॉक में",only_left:"बचे हैं!",your_cart:"🛒 आपकी कार्ट",cart_empty:"आपकी कार्ट खाली है",browse:"उत्पाद देखें",total:"कुल",items:"आइटम",place_order:"ऑर्डर करें",my_orders:"📦 मेरे ऑर्डर",no_orders:"अभी कोई ऑर्डर नहीं",start_shopping:"खरीदारी शुरू करें",order_placed:"ऑर्डर हो गया!",continue:"खरीदारी जारी रखें",arrives:"पहुंचेगा",shop:"दुकान",cart:"कार्ट",orders:"ऑर्डर",log_out:"लॉग आउट",reviews:"समीक्षाएं",write_review:"समीक्षा लिखें",submit:"भेजें",login_review:"समीक्षा के लिए लॉग इन करें।",no_reviews:"अभी कोई समीक्षा नहीं।",close:"बंद करें",free_delivery:"🚚 मुफ़्त डिलीवरी — 1-5 कार्य दिवस",specs:"विशेषताएं",each:"प्रति",unavailable:"उपलब्ध नहीं",more_supply:"और सप्लाई चाहिए",order_soon:"जल्दी ऑर्डर करें!"},
+  es:{welcome:"Bienvenido de nuevo",login_sub:"Inicia sesión en tu cuenta FastOrder",login_btn:"Iniciar Sesión",signup_title:"Crear una cuenta",signup_sub:"Únete a FastOrder y empieza a comprar",signup_btn:"Crear Cuenta",email:"Correo",password:"Contraseña",first_name:"Nombre",last_name:"Apellido",no_account:"¿No tienes cuenta?",has_account:"¿Ya tienes cuenta?",remember:"Recordarme",products:"Productos",results:"resultados",search_ph:"Buscar laptops, teléfonos, GPUs...",sort_by:"Ordenar por:",featured:"Destacados",price_low:"Precio: Menor a Mayor",price_high:"Precio: Mayor a Menor",avg_reviews:"Opiniones de Clientes",newest:"Más Nuevos",name_az:"Nombre: A a Z",name_za:"Nombre: Z a A",category:"Categoría",brand:"Marca",price_label:"Precio",rating:"Calificación",and_up:"y más",clear_all:"Limpiar Todo",all:"Todo",under:"Menos de",above:"y más",add_cart:"Añadir al Carrito",buy_now:"Comprar Ahora",out_stock:"Agotado",in_stock:"En Stock",only_left:"quedan!",your_cart:"🛒 Tu Carrito",cart_empty:"Tu carrito está vacío",browse:"Ver Productos",total:"Total",items:"artículos",place_order:"Hacer Pedido",my_orders:"📦 Mis Pedidos",no_orders:"Sin pedidos aún",start_shopping:"Empezar a Comprar",order_placed:"¡Pedido Realizado!",continue:"Seguir Comprando",arrives:"Llega",shop:"Tienda",cart:"Carrito",orders:"Pedidos",log_out:"Cerrar sesión",reviews:"reseñas",write_review:"Escribir reseña",submit:"Enviar",login_review:"Inicia sesión para opinar.",no_reviews:"Sin reseñas aún.",close:"Cerrar",free_delivery:"🚚 Envío GRATIS — 1-5 días hábiles",specs:"Especificaciones",each:"c/u",unavailable:"No disponible",more_supply:"Necesita reabastecimiento",order_soon:"¡ordena pronto!"},
+  ta:{welcome:"மீண்டும் வரவேற்கிறோம்",login_sub:"உங்கள் FastOrder கணக்கில் உள்நுழையுங்கள்",login_btn:"உள்நுழைக",signup_title:"கணக்கை உருவாக்கு",signup_sub:"FastOrder-ல் சேர்ந்து ஷாப்பிங் செய்யுங்கள்",signup_btn:"கணக்கை உருவாக்கு",email:"மின்னஞ்சல்",password:"கடவுச்சொல்",first_name:"முதல் பெயர்",last_name:"கடைசி பெயர்",no_account:"கணக்கு இல்லையா?",has_account:"ஏற்கனவே கணக்கு உள்ளதா?",remember:"என்னை நினைவில் கொள்",products:"பொருட்கள்",results:"முடிவுகள்",search_ph:"லேப்டாப், போன், GPU தேடுங்கள்...",sort_by:"வரிசைப்படுத்து:",featured:"சிறப்பு",price_low:"விலை: குறைவு → அதிகம்",price_high:"விலை: அதிகம் → குறைவு",avg_reviews:"வாடிக்கையாளர் மதிப்பீடு",newest:"புதியவை",name_az:"பெயர்: A-Z",name_za:"பெயர்: Z-A",category:"வகை",brand:"பிராண்ட்",price_label:"விலை",rating:"மதிப்பீடு",and_up:"& மேல்",clear_all:"அனைத்தும் நீக்கு",all:"அனைத்தும்",under:"கீழ்",above:"& மேல்",add_cart:"கார்ட்டில் சேர்",buy_now:"இப்போது வாங்கு",out_stock:"ஸ்டாக் இல்லை",in_stock:"ஸ்டாக்கில் உள்ளது",only_left:"மட்டுமே உள்ளது!",your_cart:"🛒 உங்கள் கார்ட்",cart_empty:"கார்ட் காலியாக உள்ளது",browse:"பொருட்களைப் பார்",total:"மொத்தம்",items:"பொருட்கள்",place_order:"ஆர்டர் செய்",my_orders:"📦 என் ஆர்டர்கள்",no_orders:"ஆர்டர்கள் இல்லை",start_shopping:"ஷாப்பிங் தொடங்கு",order_placed:"ஆர்டர் செய்யப்பட்டது!",continue:"ஷாப்பிங் தொடரு",arrives:"வரும்",shop:"கடை",cart:"கார்ட்",orders:"ஆர்டர்",log_out:"வெளியேறு",reviews:"மதிப்புரைகள்",write_review:"மதிப்புரை எழுது",submit:"சமர்ப்பி",login_review:"மதிப்புரை எழுத உள்நுழையுங்கள்.",no_reviews:"இன்னும் மதிப்புரைகள் இல்லை.",close:"மூடு",free_delivery:"🚚 இலவச டெலிவரி — 1-5 நாட்கள்",specs:"விவரக்குறிப்புகள்",each:"ஒன்றுக்கு",unavailable:"கிடைக்கவில்லை",more_supply:"சப்ளை தேவை",order_soon:"விரைவில் ஆர்டர் செய்யுங்கள்!"}
+};
+function t(k){return(LANGS[curLang]&&LANGS[curLang][k])||LANGS.en[k]||k}
+function setLang(l){curLang=l;localStorage.setItem("fastorder_lang",l);if(typeof applyFilters==="function")applyFilters();if(typeof loadCart==="function"&&document.getElementById("page-cart").classList.contains("active"))loadCart();if(typeof loadOrders==="function"&&document.getElementById("page-orders").classList.contains("active"))loadOrders();updateHeader()}
+
+// ── YOUR ORIGINAL IMAGE FUNCTIONS (NEVER CHANGED) ──
+function productIcon(name){const n=name.toLowerCase();if(n.includes("laptop")||n.includes("notebook")||n.includes("chromebook"))return"💻";if(n.includes("desktop")||n.includes("tower")||n.includes("workstation")||n.includes("minipc")||n.includes("office"))return"🖥️";if(n.includes("monitor")||n.includes("display"))return"🖥️";if(n.includes("keyboard")||n.includes("numpad"))return"⌨️";if(n.includes("mouse")||n.includes("trackball"))return"🖱️";if(n.includes("phone")||n.includes("smartphone"))return"📱";if(n.includes("tablet")||n.includes("tab"))return"📱";if(n.includes("gpu")||n.includes("graphics")||n.includes("accelerator"))return"🎮";if(n.includes("processor")||n.includes("cpu")||n.includes("core"))return"🧠";if(n.includes("ram")||n.includes("ddr"))return"🧩";if(n.includes("ssd")||n.includes("hdd")||n.includes("storage")||n.includes("nvme")||n.includes("external"))return"💾";if(n.includes("headphone")||n.includes("headset")||n.includes("earbud"))return"🎧";if(n.includes("speaker")||n.includes("audio")||n.includes("microphone")||n.includes("podcast"))return"🎤";if(n.includes("webcam")||n.includes("camera"))return"📷";if(n.includes("router")||n.includes("wifi")||n.includes("mesh")||n.includes("ethernet")||n.includes("network"))return"📡";if(n.includes("hub")||n.includes("adapter")||n.includes("cable")||n.includes("charging")||n.includes("usb"))return"🔌";const defaults=["💻","🖥️","📱","🎮","⌨️","🖱️","🎧","📡"];let h=0;for(let i=0;i<n.length;i++)h=n.charCodeAt(i)+((h<<5)-h);return defaults[Math.abs(h)%defaults.length]}
+function productImageUrl(p){const query=`${p.ProductName} product only white background`;return`https://tse.mm.bing.net/th?q=${encodeURIComponent(query)}&w=700&h=520&c=7&rs=1&p=0&o=5`}
+function productDescription(p){const n=p.ProductName.toLowerCase();const d=p.Package||"Standard electronics item";if(n.includes("laptop")||n.includes("book"))return`Portable computer for work and everyday use. ${d}.`;if(n.includes("desktop")||n.includes("workstation")||n.includes("pc"))return`Computer for productivity, gaming, or office use. ${d}.`;if(n.includes("monitor")||n.includes("display"))return`Display for gaming, editing, and multitasking. ${d}.`;if(n.includes("keyboard"))return`Keyboard for typing, gaming, and daily use. ${d}.`;if(n.includes("mouse"))return`Pointing device for navigation and gaming. ${d}.`;if(n.includes("phone")||n.includes("tablet")||n.includes("tab"))return`Smart device for apps and entertainment. ${d}.`;if(n.includes("gpu")||n.includes("graphics"))return`Graphics card for gaming and rendering. ${d}.`;if(n.includes("processor")||n.includes("core"))return`Processor for fast computing. ${d}.`;if(n.includes("ssd")||n.includes("hdd")||n.includes("ram"))return`Storage/memory for speed and capacity. ${d}.`;if(n.includes("head")||n.includes("earbud")||n.includes("speaker")||n.includes("mic"))return`Audio product for music and calls. ${d}.`;if(n.includes("router")||n.includes("wifi"))return`Networking device for internet. ${d}.`;return`Electronics item. ${d}.`}
+function productSpecs(p){return(p.Package||"").split(";").map(x=>x.trim()).filter(Boolean).map(b=>{const[k,...v]=b.split(":");return v.length?[k.trim(),v.join(":").trim()]:[b,""]}).filter(x=>x[0])}
+
+// ── NAV ──
+function showPage(n){document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));document.getElementById("page-"+n).classList.add("active");if(n==="shop"){loadFilterOptions();applyFilters()}if(n==="cart")loadCart();if(n==="orders")loadOrders();updateHeader()}
+function updateHeader(){const h=document.getElementById("headerRight");const langSel=`<select onchange="setLang(this.value)" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:var(--surface);cursor:pointer"><option value="en" ${curLang==="en"?"selected":""}>🇬🇧 English</option><option value="hi" ${curLang==="hi"?"selected":""}>🇮🇳 हिन्दी</option><option value="ta" ${curLang==="ta"?"selected":""}>🇮🇳 தமிழ்</option><option value="es" ${curLang==="es"?"selected":""}>🇪🇸 Español</option></select>`;if(!user){h.innerHTML=langSel+`<button class="nav-btn" onclick="showPage('login')">${t("login_btn")}</button><button class="nav-btn accent" onclick="showPage('signup')">${t("signup_btn")}</button>`;return}h.innerHTML=langSel+`<button class="nav-btn" onclick="showPage('shop')">🏪 ${t("shop")}</button><button class="nav-btn" onclick="showPage('cart')" style="position:relative">🛒 ${t("cart")}<span class="cart-count" id="cart-badge" style="display:${cartCount>0?'flex':'none'}">${cartCount}</span></button><button class="nav-btn" onclick="showPage('orders')">📦 ${t("orders")}</button><div class="user-badge"><div class="user-avatar">${(user.firstName||'?')[0].toUpperCase()}</div><span>${user.firstName}</span></div><button class="btn-logout" onclick="logout()">${t("log_out")}</button>`}
+function updateCartBadge(){const b=document.getElementById("cart-badge");if(b){b.textContent=cartCount;b.style.display=cartCount>0?"flex":"none"}}
+
+// ── AUTH ──
+async function doLogin(){const em=document.getElementById("login-email").value.trim(),pw=document.getElementById("login-pw").value.trim(),rem=document.getElementById("remember-me").checked,e=document.getElementById("login-error");e.classList.remove("show");if(!em||!pw){e.textContent="Fill in all fields.";e.classList.add("show");return}try{const r=await fetch(API+"/api/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:em,password:pw})});const d=await r.json();if(!r.ok){e.textContent=d.error;e.classList.add("show");return}user=d;if(rem){localStorage.setItem("fastorder_user",JSON.stringify(d))}else{localStorage.removeItem("fastorder_user")}toast("Welcome back, "+user.firstName+"!");loadCartCount();showPage("shop")}catch{e.textContent="Cannot reach server.";e.classList.add("show")}}
+async function doSignup(){const fn=document.getElementById("signup-fn").value.trim(),ln=document.getElementById("signup-ln").value.trim(),em=document.getElementById("signup-email").value.trim(),pw=document.getElementById("signup-pw").value.trim(),e=document.getElementById("signup-error");e.classList.remove("show");if(!fn||!ln||!em||!pw){e.textContent="All fields required.";e.classList.add("show");return}try{const r=await fetch(API+"/api/signup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({firstName:fn,lastName:ln,email:em,password:pw})});const d=await r.json();if(!r.ok){e.textContent=d.error;e.classList.add("show");return}user=d;toast("Welcome, "+user.firstName+"!");loadCartCount();showPage("shop")}catch{e.textContent="Cannot reach server.";e.classList.add("show")}}
+function logout(){user=null;cartCount=0;localStorage.removeItem("fastorder_user");toast("Logged out.");showPage("login")}
+
+// ── FILTERS ──
+async function loadFilterOptions(){if(filterData)return;try{const r=await fetch(API+"/api/filter-options");filterData=await r.json();renderFilterOptions()}catch{}}
+function renderFilterOptions(){if(!filterData)return;const catEl=document.getElementById("filterCategories");catEl.innerHTML=`<div class="filter-title">Category</div><div class="filter-option"><input type="radio" name="cat" value="" onchange="setCategory('')" checked id="cat-all"><label for="cat-all">All</label></div>`+filterData.categories.map(c=>`<div class="filter-option"><input type="radio" name="cat" value="${c}" onchange="setCategory('${c}')" id="cat-${c}"><label for="cat-${c}">${c}</label></div>`).join("");const brEl=document.getElementById("filterBrands");brEl.innerHTML=`<div class="filter-title">Brand</div>`+filterData.brands.map(b=>`<div class="filter-option"><input type="checkbox" value="${b}" onchange="toggleBrand('${b}')" id="br-${b}"><label for="br-${b}">${b}</label></div>`).join("")}
+function setCategory(c){filters.category=c;applyFilters()}
+function toggleBrand(b){const i=filters.brands.indexOf(b);if(i>-1)filters.brands.splice(i,1);else filters.brands.push(b);applyFilters()}
+function setPrice(min,max){document.getElementById("f-min").value=min?Math.round(min*USD_TO_INR):"";document.getElementById("f-max").value=max?Math.round(max*USD_TO_INR):"";filters.minPrice=min||"";filters.maxPrice=max||"";applyFilters()}
+function applyPriceInputs(){const minInr=document.getElementById("f-min").value;const maxInr=document.getElementById("f-max").value;filters.minPrice=minInr?Math.round(Number(minInr)/USD_TO_INR):"";filters.maxPrice=maxInr?Math.round(Number(maxInr)/USD_TO_INR):"";applyFilters()}
+function setRating(r){filters.minRating=filters.minRating==r?"":r;applyFilters()}
+function clearAllFilters(){filters={search:"",brands:[],category:"",minPrice:"",maxPrice:"",minRating:"",sort:filters.sort};document.getElementById("shop-search").value="";document.getElementById("f-min").value="";document.getElementById("f-max").value="";document.querySelectorAll("#filterBrands input").forEach(c=>c.checked=false);document.querySelectorAll("input[name='cat']").forEach(c=>{c.checked=c.value===""});applyFilters()}
+function renderActiveTags(){const tags=[];if(filters.category)tags.push({l:"Category: "+filters.category,c:()=>{filters.category="";document.querySelectorAll("input[name='cat']").forEach(c=>{c.checked=c.value===""});applyFilters()}});filters.brands.forEach(b=>tags.push({l:b,c:()=>{toggleBrand(b);document.getElementById("br-"+b).checked=false}}));if(filters.minPrice||filters.maxPrice)tags.push({l:`₹${filters.minPrice?Math.round(filters.minPrice*USD_TO_INR).toLocaleString("en-IN"):"0"} – ₹${filters.maxPrice?Math.round(filters.maxPrice*USD_TO_INR).toLocaleString("en-IN"):"∞"}`,c:()=>setPrice("","")});if(filters.minRating)tags.push({l:filters.minRating+"★ & up",c:()=>{filters.minRating="";applyFilters()}});if(filters.search)tags.push({l:'"'+filters.search+'"',c:()=>{filters.search="";document.getElementById("shop-search").value="";applyFilters()}});document.getElementById("activeFilters").innerHTML=tags.map((t,i)=>`<span class="active-tag">${esc(t.l)}<button onclick="clearTag(${i})">✕</button></span>`).join("");window._tagFns=tags.map(t=>t.c)}
+function clearTag(i){if(window._tagFns&&window._tagFns[i])window._tagFns[i]()}
+
+// ── PRODUCTS (with stock) ──
+async function applyFilters(){filters.sort=document.getElementById("f-sort").value;filters.search=document.getElementById("shop-search").value.trim();renderActiveTags();const p=new URLSearchParams();if(filters.search)p.append("search",filters.search);if(filters.brands.length)p.append("brand",filters.brands.join(","));if(filters.category)p.append("category",filters.category);if(filters.minPrice)p.append("minPrice",filters.minPrice);if(filters.maxPrice)p.append("maxPrice",filters.maxPrice);if(filters.minRating)p.append("minRating",filters.minRating);p.append("sort",filters.sort);
+try{const r=await fetch(API+"/api/products?"+p);shopProducts=await r.json();document.getElementById("results-count").innerHTML=`<strong>${shopProducts.length}</strong> results`;const grid=document.getElementById("product-grid");if(!shopProducts.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-dim)">No products match your filters.</div>';return}
+grid.innerHTML=shopProducts.map(pr=>{const stock=pr.Stock||0;const out=stock<=0;const low=stock>0&&stock<=10;let stockHtml="";if(out)stockHtml=`<div class="stock-text stock-out">❌ ${t("out_stock")}</div>`;else if(low)stockHtml=`<div class="stock-text stock-low">⚠️ ${stock} ${t("only_left")}</div>`;else stockHtml=`<div class="stock-text stock-ok">✓ ${t("in_stock")} (${stock})</div>`;const dis=out?" btn-disabled":"";const brand=pr.Brand||"";
+return`<div class="product-card" style="${out?'opacity:.7':''}"><div class="product-img" onclick="showDetail(${pr.Id})"><div class="fallback"><span class="img-icon">${productIcon(pr.ProductName)}</span></div><img src="${productImageUrl(pr)}" alt="${esc(pr.ProductName)}" onerror="this.style.display='none'" loading="lazy"></div><div class="card-body"><div class="brand-tag">${esc(brand)}</div><div class="pname" onclick="showDetail(${pr.Id})">${esc(pr.ProductName)}</div><div class="price-tag">${price(pr.UnitPrice)}</div><div class="rating-row">${starsHtml(pr.Rating||0)} <span>${pr.Rating>0?pr.Rating.toFixed(1):"New"} (${pr.ReviewCount||0})</span></div>${stockHtml}<div class="card-actions"><button class="btn-cart${dis}" onclick="addToCart(${pr.Id})">${out?'🚫 '+t("out_stock"):'🛒 '+t("add_cart")}</button><button class="btn-buy${dis}" onclick="buyNow(${pr.Id})">${out?t("unavailable"):'⚡ '+t("buy_now")}</button></div></div></div>`}).join("")}catch{toast("Failed to load.","error")}}
+document.getElementById("shop-search").addEventListener("input",()=>{clearTimeout(searchTimer);searchTimer=setTimeout(applyFilters,300)});
+
+// ── PRODUCT DETAIL ──
+async function showDetail(pid){let p=shopProducts.find(x=>x.Id===pid);if(!p)return;let reviews=[],avgRat=0,revCount=0,stock=p.Stock||0;try{const r=await fetch(API+"/api/product/"+pid);const data=await r.json();if(!data.error){reviews=data.Reviews||[];avgRat=data.Rating||0;revCount=data.ReviewCount||0;stock=data.Stock||0}}catch{}
+const specs=productSpecs(p);const brand=p.Brand||"";const out=stock<=0;const low=stock>0&&stock<=10;let stockHtml="";if(out)stockHtml=`<div class="stock-text stock-out" style="font-size:14px;margin:8px 0">❌ ${t("out_stock")} — ${t("more_supply")}</div>`;else if(low)stockHtml=`<div class="stock-text stock-low" style="font-size:14px;margin:8px 0">⚠️ ${stock} ${t("only_left")} — ${t("order_soon")}</div>`;else stockHtml=`<div class="stock-text stock-ok" style="font-size:14px;margin:8px 0">✓ ${t("in_stock")} (${stock})</div>`;
+const dis=out?" btn-disabled":"";const reviewsHtml=reviews.map(rv=>`<div class="review-card"><div class="rev-top"><span class="rev-author">${esc(rv.Author)}</span><span class="rev-date">${fmtDate(rv.CreatedAt)}</span></div><div class="rev-stars">${starsHtml(rv.Rating,12)}</div>${rv.Comment?`<div class="rev-text">${esc(rv.Comment)}</div>`:""}</div>`).join("")||'<p style="color:var(--text-dim);font-size:12px">No reviews yet.</p>';
+const m=document.getElementById("modal-content");m.className="modal product-detail-modal";m.innerHTML=`<div class="detail-layout"><div class="detail-image"><img src="${productImageUrl(p)}" alt="${esc(p.ProductName)}" onerror="this.style.display='none'"></div><div class="detail-info"><div class="detail-brand">${esc(brand)}</div><h3>${esc(p.ProductName)}</h3><div class="detail-rating">${starsHtml(avgRat,16)} <span>${avgRat>0?avgRat.toFixed(1):"0"}/5 (${revCount} ${t("reviews")})</span></div><div class="detail-price">${price(p.UnitPrice)}</div>${stockHtml}<div class="delivery-info">${t("free_delivery")}</div><div class="detail-specs">${specs.map(row=>`<div class="spec-row"><strong>${esc(row[0])}</strong><span>${esc(row[1])}</span></div>`).join("")}</div><div class="detail-actions"><button class="btn-cart${dis}" onclick="addToCart(${p.Id});closeModal()">🛒 ${out?t("out_stock"):t("add_cart")}</button><button class="btn-buy${dis}" onclick="buyNow(${p.Id});closeModal()">⚡ ${out?t("unavailable"):t("buy_now")}</button></div><div class="reviews-section"><h4>${t("reviews")} (${revCount})</h4>${user?`<div class="review-form"><div style="font-size:12px;font-weight:600">${t("write_review")}</div><div class="star-picker" id="starPicker">${[1,2,3,4,5].map(i=>`<span onclick="pickStar(${i})" data-v="${i}" class="active" style="cursor:pointer">★</span>`).join("")}</div><textarea class="review-textarea" id="reviewComment" placeholder="Share your experience..."></textarea><button class="review-submit" onclick="submitReview(${p.Id})">${t("submit")}</button></div>`:`<p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${t("login_review")}</p>`}${reviewsHtml}</div><button class="btn-close-modal" onclick="closeModal()" style="margin-top:12px">${t("close")}</button></div></div>`;document.getElementById("modal-overlay").classList.add("show")}
+function closeModal(){document.getElementById("modal-overlay").classList.remove("show")}
+document.getElementById("modal-overlay").addEventListener("click",e=>{if(e.target===document.getElementById("modal-overlay"))closeModal()});
+let selectedRating=5;function pickStar(n){selectedRating=n;document.querySelectorAll("#starPicker span").forEach(s=>{s.classList.toggle("active",parseInt(s.dataset.v)<=n)})}
+async function submitReview(pid){if(!user)return;const comment=document.getElementById("reviewComment").value.trim();try{const r=await fetch(API+"/api/reviews/"+pid,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({accountId:user.id,rating:selectedRating,comment})});const d=await r.json();if(!r.ok){toast(d.error||"Failed.","error");return}toast("Review submitted!");showDetail(pid);applyFilters()}catch{toast("Failed.","error")}}
+
+// ── CART ──
+async function loadCartCount(){if(!user)return;try{const r=await fetch(API+"/api/cart/"+user.id);const items=await r.json();cartCount=items.reduce((s,i)=>s+i.Quantity,0);updateCartBadge()}catch{}}
+async function addToCart(pid){if(!user){toast("Please log in first.","error");showPage("login");return}try{await fetch(API+"/api/cart/"+user.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:pid,quantity:1})});toast("Added to cart!");loadCartCount()}catch{toast("Failed.","error")}}
+async function loadCart(){if(!user)return;try{const r=await fetch(API+"/api/cart/"+user.id);const items=await r.json();cartCount=items.reduce((s,i)=>s+i.Quantity,0);updateCartBadge();const w=document.getElementById("cart-items"),sw=document.getElementById("cart-summary-wrap");if(!items.length){w.innerHTML=`<div class="cart-empty"><div style="font-size:48px">🛒</div>${t("cart_empty")}<br><br><button class="nav-btn accent" onclick="showPage('shop')">${t("browse")}</button></div>`;sw.innerHTML="";return}w.innerHTML=items.map(i=>`<div class="cart-item"><div class="info"><div class="name">${esc(i.ProductName)}</div><div class="price">${price(i.UnitPrice)} ${t("each")}</div></div><div class="qty-controls"><button class="qty-btn" onclick="chgQty(${i.Id},${i.Quantity-1})">−</button><span class="qty">${i.Quantity}</span><button class="qty-btn" onclick="chgQty(${i.Id},${i.Quantity+1})">+</button></div><div class="line-total">${price(i.UnitPrice*i.Quantity)}</div><button class="btn-remove" onclick="rmCart(${i.Id})">✕</button></div>`).join("");const tot=items.reduce((s,i)=>s+i.UnitPrice*i.Quantity,0);sw.innerHTML=`<div class="cart-summary"><div class="total-row"><span>${t("total")} (${items.length} ${t("items")})</span><span class="amount">${price(tot)}</span></div><button class="btn-checkout" onclick="doCheckout()">✓ ${t("place_order")} — ${price(tot)}</button></div>`}catch{toast("Failed.","error")}}
+async function chgQty(ci,q){if(q<1){rmCart(ci);return}try{await fetch(API+"/api/cart/"+user.id+"/update/"+ci,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({quantity:q})});loadCart()}catch{}}
+async function rmCart(ci){try{await fetch(API+"/api/cart/"+user.id+"/item/"+ci,{method:"DELETE"});loadCart()}catch{}}
+async function doCheckout(){try{const r=await fetch(API+"/api/checkout/"+user.id,{method:"POST"});const d=await r.json();if(!r.ok){toast(d.error,"error");return}showConfirm(d);cartCount=0;updateCartBadge();loadCart()}catch{toast("Checkout failed.","error")}}
+async function buyNow(pid){if(!user){toast("Please log in.","error");showPage("login");return}try{const r=await fetch(API+"/api/buy-now/"+user.id,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({productId:pid,quantity:1})});const d=await r.json();if(!r.ok){toast(d.error,"error");return}showConfirm(d)}catch{toast("Failed.","error")}}
+function showConfirm(d){const m=document.getElementById("modal-content");m.className="modal";m.innerHTML=`<div class="check">✓</div><h3>${t("order_placed")}</h3><div class="detail"><strong>#${esc(d.orderNumber)}</strong><br>${d.productName?esc(d.productName)+' × '+d.quantity:d.itemCount+' '+t("items")}<br>${t("total")}: <strong>${price(d.total||0)}</strong></div><div class="shipping-box"><div class="ship-title">🚚 ${esc(d.shipper)}</div><div class="ship-date">${t("arrives")}: ${esc(d.estimatedDelivery)}</div></div><button class="btn-close-modal" onclick="closeModal()">${t("continue")}</button>`;document.getElementById("modal-overlay").classList.add("show")}
+// ── ORDERS ──
+async function loadOrders(){if(!user)return;try{const r=await fetch(API+"/api/my-orders/"+user.id);const orders=await r.json();const w=document.getElementById("orders-list");if(!orders.length){w.innerHTML=`<div class="empty-orders"><div style="font-size:48px">📦</div>${t("no_orders")}<br><br><button class="nav-btn accent" onclick="showPage('shop')">${t("start_shopping")}</button></div>`;return}w.innerHTML=orders.map(o=>`<div class="order-card"><div class="order-header"><div><div class="order-num">#${esc(o.OrderNumber)}</div><div class="order-date">${fmtDate(o.OrderDate)}</div></div><div class="order-total">${price(o.TotalAmount||0)}</div></div><div class="order-items-list">${o.Items.map(i=>`<div class="order-item-row"><span>${esc(i.ProductName)} × ${i.Quantity}</span><span>${price(i.UnitPrice*i.Quantity)}</span></div>`).join("")}</div>${o.Shipper?`<div class="order-shipping"><span class="shipper-name">🚚 ${esc(o.Shipper)}</span><span class="est-date">${o.EstimatedDelivery?t("arrives")+" "+esc(o.EstimatedDelivery):""}</span></div>`:""}</div>`).join("")}catch{toast("Failed.","error")}}
+document.getElementById("login-pw").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin()});
+document.getElementById("signup-pw").addEventListener("keydown",e=>{if(e.key==="Enter")doSignup()});
+// Auto-login if Remember Me was used
+const saved=localStorage.getItem("fastorder_user");
+if(saved){try{user=JSON.parse(saved);loadCartCount();showPage("shop")}catch{localStorage.removeItem("fastorder_user");showPage("login")}}else{showPage("login")}
+</script>
+</body>
+</html>

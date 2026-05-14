@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f14; --surface: #151921; --surface2: #1c2230;
+    --border: #2a3042; --border-hover: #3d4663;
+    --text: #e4e8f1; --text-dim: #7a839b;
+    --accent: #6c8cff; --accent-glow: rgba(108,140,255,0.15); --accent-hover: #8aa4ff;
+    --red: #ff6b6b; --red-glow: rgba(255,107,107,0.12);
+    --green: #5bdb8a; --green-glow: rgba(91,219,138,0.15);
+    --yellow: #ffd36b; --purple: #a78bfa; --pink: #f472b6; --teal: #5eead4;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; display: flex; align-items: center; gap: 10px; }
+  .header h1 span { background: linear-gradient(135deg, var(--accent), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); font-weight: 500; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); transition: background 0.3s; }
+  .status-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+
+  .tabs { display: flex; gap: 4px; padding: 16px 32px 0; border-bottom: 1px solid var(--border); background: var(--surface); overflow-x: auto; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; user-select: none; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .main { padding: 24px 32px; max-width: 1300px; margin: 0 auto; }
+
+  .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .form-card h2 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .field input, .field select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+  .field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .field input::placeholder { color: var(--text-dim); opacity: 0.6; }
+
+  .btn-add { display: inline-flex; align-items: center; gap: 6px; padding: 10px 22px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+  .btn-add:hover { background: var(--accent-hover); }
+  .btn-add:active { transform: scale(0.97); }
+
+  .table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 4px; gap: 8px; flex-wrap: wrap; }
+  .table-toolbar-right { display: flex; gap: 8px; align-items: center; }
+  .table-toolbar .count { font-size: 13px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .table-toolbar .count strong { color: var(--text); }
+  .btn-toolbar { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); padding: 7px 14px; border-radius: var(--radius-sm); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+  .btn-toolbar:hover { color: var(--text); border-color: var(--border-hover); }
+  .btn-clear-filters { display: none; }
+  .btn-clear-filters.visible { display: inline-flex; }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: visible; }
+  .table-scroll { overflow-x: auto; overflow-y: visible; }
+  table { width: 100%; border-collapse: collapse; min-width: 700px; }
+  thead th { padding: 12px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); text-align: left; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; user-select: none; }
+  thead th.sortable { cursor: pointer; transition: color 0.15s; position: relative; padding-right: 28px; }
+  thead th.sortable:hover { color: var(--text); }
+  thead th .sort-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.3; font-size: 9px; }
+  thead th.sort-asc .sort-arrow, thead th.sort-desc .sort-arrow { opacity: 1; color: var(--accent); }
+  thead .filter-row th { padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); cursor: default; }
+  .filter-input { width: 100%; min-width: 80px; padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .filter-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+  .filter-input.active { border-color: var(--accent); background: var(--surface2); }
+  .filter-input::placeholder { color: var(--text-dim); opacity: 0.5; font-size: 11px; }
+
+  tbody td { padding: 11px 16px; border-bottom: 1px solid var(--border); font-family: 'JetBrains Mono', monospace; font-size: 13px; vertical-align: middle; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.editing { background: var(--accent-glow); }
+  tbody tr.editing:hover { background: var(--accent-glow); }
+
+  .edit-input { width: 100%; min-width: 70px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--accent); border-radius: 4px; color: var(--text); font-size: 13px; font-family: 'JetBrains Mono', monospace; font-weight: 500; outline: none; box-shadow: 0 0 0 2px var(--accent-glow); }
+
+  /* PAGINATION */
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 16px 0 4px; flex-wrap: wrap; }
+  .pagination button { background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); padding: 7px 12px; border-radius: var(--radius-sm); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.15s; min-width: 36px; }
+  .pagination button:hover:not(:disabled) { color: var(--text); border-color: var(--border-hover); }
+  .pagination button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .pagination .page-info { font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; padding: 0 8px; }
+
+  /* 3-DOT MENU */
+  .actions-cell { position: relative; text-align: right; width: 60px; white-space: nowrap; }
+  .btn-dots { background: none; border: 1px solid transparent; color: var(--text-dim); width: 32px; height: 32px; border-radius: var(--radius-sm); cursor: pointer; font-size: 18px; line-height: 1; transition: all 0.15s; display: inline-flex; align-items: center; justify-content: center; }
+  .btn-dots:hover { color: var(--text); border-color: var(--border); background: var(--surface2); }
+  .btn-dots.open { color: var(--accent); border-color: var(--accent); background: var(--accent-glow); }
+  .dropdown { position: absolute; top: calc(100% - 4px); right: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 130px; z-index: 100; overflow: hidden; animation: dropdownIn 0.15s ease; }
+  @keyframes dropdownIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .dropdown button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; background: none; border: none; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; transition: background 0.12s; }
+  .dropdown button:hover { background: var(--surface2); }
+  .dropdown button.danger { color: var(--red); border-top: 1px solid var(--border); }
+  .dropdown button.danger:hover { background: var(--red-glow); }
+
+  .btn-save, .btn-cancel { width: 30px; height: 30px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.15s; margin-left: 4px; font-size: 14px; }
+  .btn-save { color: var(--green); border-color: var(--green); }
+  .btn-save:hover { background: var(--green-glow); }
+  .btn-cancel { color: var(--text-dim); }
+  .btn-cancel:hover { color: var(--red); border-color: var(--red); background: var(--red-glow); }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-dim); font-size: 14px; }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.5; }
+
+  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast { padding: 12px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; color: #fff; animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.5s forwards; pointer-events: none; }
+  .toast.success { background: #1a7a42; }
+  .toast.error   { background: #b33030; }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  @keyframes fadeOut  { to { opacity: 0; transform: translateY(10px); } }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── DASHBOARD ───────────────────────────────────────── */
+  .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; transition: border-color 0.2s, transform 0.2s; }
+  .stat-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+  .stat-card .label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -1px; }
+  .stat-card.accent .value { color: var(--accent); }
+  .stat-card.green .value { color: var(--green); }
+  .stat-card.purple .value { color: var(--purple); }
+  .stat-card.yellow .value { color: var(--yellow); }
+  .stat-card.pink .value { color: var(--pink); }
+  .stat-card.teal .value { color: var(--teal); }
+
+  .dash-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .dash-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  @media (max-width: 900px) { .dash-row, .dash-row.three { grid-template-columns: 1fr; } }
+  .dash-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .dash-card h3 { font-size: 13px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .dash-list { display: flex; flex-direction: column; gap: 10px; }
+  .dash-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; }
+  .dash-item .name { color: var(--text); font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-item .meta { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .dash-item .val { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 13px; }
+  .bar-row { display: grid; grid-template-columns: 100px 1fr 50px; gap: 10px; align-items: center; font-size: 12px; }
+  .bar-row .lbl { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-row .bar-bg { background: var(--surface2); border-radius: 999px; height: 8px; overflow: hidden; }
+  .bar-row .bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 999px; transition: width 0.4s; }
+  .bar-row .num { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; text-align: right; font-size: 12px; }
+
+  .recent-orders-table { width: 100%; }
+  .recent-orders-table td { padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .recent-orders-table tr:last-child td { border-bottom: none; }
+  .recent-orders-table .cust { font-family: 'DM Sans', sans-serif; color: var(--text); font-weight: 500; }
+  .recent-orders-table .amt { color: var(--green); font-weight: 600; text-align: right; }
+
+  .skeleton { display: inline-block; background: linear-gradient(90deg, var(--surface2) 0%, var(--border) 50%, var(--surface2) 100%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 4px; height: 1em; min-width: 40px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  @media (max-width: 640px) {
+    .header, .tabs, .main { padding-left: 16px; padding-right: 16px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+    <span>Database Manager</span>
+  </h1>
+  <div class="status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Checking...</span>
+  </div>
+</div>
+
+<div class="tabs" id="tabBar">
+  <button class="tab active" data-tab="dashboard">📊 Dashboard</button>
+  <button class="tab" data-tab="customers">Customers</button>
+  <button class="tab" data-tab="orders">Orders</button>
+  <button class="tab" data-tab="orderitems">Order Items</button>
+  <button class="tab" data-tab="products">Products</button>
+  <button class="tab" data-tab="suppliers">Suppliers</button>
+</div>
+
+<div class="main">
+
+<!-- ═══════ DASHBOARD ═══════ -->
+<div class="tab-panel active" id="panel-dashboard">
+  <div class="dash-grid" id="stat-cards">
+    <div class="stat-card accent"><div class="label">👤 Customers</div><div class="value"><span class="skeleton"></span></div></div>
+    <div class="stat-card green"><div class="label">📦 Orders</div><div class="value"><span class="skeleton"></span></div></div>
+    <div class="stat-card purple"><div class="label">🏷️ Products</div><div class="value"><span class="skeleton"></span></div></div>
+    <div class="stat-card pink"><div class="label">🏭 Suppliers</div><div class="value"><span class="skeleton"></span></div></div>
+    <div class="stat-card yellow"><div class="label">💰 Total Revenue</div><div class="value"><span class="skeleton"></span></div></div>
+    <div class="stat-card teal"><div class="label">⚠️ Discontinued</div><div class="value"><span class="skeleton"></span></div></div>
+  </div>
+
+  <div class="dash-row">
+    <div class="dash-card">
+      <h3>🏆 Top Customers by Revenue</h3>
+      <div class="dash-list" id="top-customers"><div style="color:var(--text-dim);font-size:13px;">Loading...</div></div>
+    </div>
+    <div class="dash-card">
+      <h3>🔥 Top Products by Quantity</h3>
+      <div class="dash-list" id="top-products"><div style="color:var(--text-dim);font-size:13px;">Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="dash-row">
+    <div class="dash-card">
+      <h3>🌍 Customers by Country</h3>
+      <div class="dash-list" id="customers-by-country"><div style="color:var(--text-dim);font-size:13px;">Loading...</div></div>
+    </div>
+    <div class="dash-card">
+      <h3>🕒 Recent Orders</h3>
+      <table class="recent-orders-table" id="recent-orders"><tbody><tr><td style="color:var(--text-dim);">Loading...</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ CUSTOMERS ═══════ -->
+<div class="tab-panel" id="panel-customers">
+  <div class="form-card">
+    <h2>+ Add Customer</h2>
+    <div class="form-grid">
+      <div class="field"><label>First Name *</label><input id="c-fn" placeholder="Maria"></div>
+      <div class="field"><label>Last Name *</label><input id="c-ln" placeholder="Anders"></div>
+      <div class="field"><label>City</label><input id="c-city" placeholder="Berlin"></div>
+      <div class="field"><label>Country</label><input id="c-country" placeholder="Germany"></div>
+      <div class="field"><label>Phone</label><input id="c-phone" placeholder="030-0074321"></div>
+    </div>
+    <button class="btn-add" onclick="addCustomer()">+ Add Customer</button>
+  </div>
+  <div class="table-toolbar">
+    <span class="count" id="count-customers"><strong>0</strong> records</span>
+    <div class="table-toolbar-right">
+      <button class="btn-toolbar btn-clear-filters" data-tab="customers">✕ Clear Filters</button>
+      <a class="btn-toolbar btn-export" data-tab="customers" href="#">📥 Export CSV</a>
+    </div>
+  </div>
+  <div class="table-wrap"><div class="table-scroll">
+    <table id="table-customers" data-tab="customers">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="Id">ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="FirstName">First Name<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="LastName">Last Name<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="City">City<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Country">Country<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Phone">Phone<span class="sort-arrow">▼</span></th>
+          <th></th>
+        </tr>
+        <tr class="filter-row">
+          <th><input class="filter-input" data-tab="customers" data-col="Id" placeholder="🔍 ID..."></th>
+          <th><input class="filter-input" data-tab="customers" data-col="FirstName" placeholder="🔍 First Name..."></th>
+          <th><input class="filter-input" data-tab="customers" data-col="LastName" placeholder="🔍 Last Name..."></th>
+          <th><input class="filter-input" data-tab="customers" data-col="City" placeholder="🔍 City..."></th>
+          <th><input class="filter-input" data-tab="customers" data-col="Country" placeholder="🔍 Country..."></th>
+          <th><input class="filter-input" data-tab="customers" data-col="Phone" placeholder="🔍 Phone..."></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-customers"></tbody>
+    </table>
+  </div></div>
+  <div class="pagination" id="pag-customers"></div>
+</div>
+
+<!-- ═══════ ORDERS ═══════ -->
+<div class="tab-panel" id="panel-orders">
+  <div class="form-card">
+    <h2>+ Add Order</h2>
+    <div class="form-grid">
+      <div class="field"><label>Order Number *</label><input id="o-num" placeholder="542378"></div>
+      <div class="field"><label>Customer ID *</label><input id="o-cid" type="number" placeholder="85"></div>
+      <div class="field"><label>Total Amount</label><input id="o-amt" type="number" step="0.01" placeholder="440.00"></div>
+    </div>
+    <button class="btn-add" onclick="addOrder()">+ Add Order</button>
+  </div>
+  <div class="table-toolbar">
+    <span class="count" id="count-orders"><strong>0</strong> records</span>
+    <div class="table-toolbar-right">
+      <button class="btn-toolbar btn-clear-filters" data-tab="orders">✕ Clear Filters</button>
+      <a class="btn-toolbar btn-export" data-tab="orders" href="#">📥 Export CSV</a>
+    </div>
+  </div>
+  <div class="table-wrap"><div class="table-scroll">
+    <table id="table-orders" data-tab="orders">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="Id">ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="OrderDate">Order Date<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="OrderNumber">Order #<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="CustomerId">Cust ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="TotalAmount">Total<span class="sort-arrow">▼</span></th>
+          <th></th>
+        </tr>
+        <tr class="filter-row">
+          <th><input class="filter-input" data-tab="orders" data-col="Id" placeholder="🔍 ID..."></th>
+          <th><input class="filter-input" data-tab="orders" data-col="OrderDate" placeholder="🔍 Date..."></th>
+          <th><input class="filter-input" data-tab="orders" data-col="OrderNumber" placeholder="🔍 Order #..."></th>
+          <th><input class="filter-input" data-tab="orders" data-col="CustomerId" placeholder="🔍 Cust ID..."></th>
+          <th><input class="filter-input" data-tab="orders" data-col="TotalAmount" placeholder="🔍 Total..."></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-orders"></tbody>
+    </table>
+  </div></div>
+  <div class="pagination" id="pag-orders"></div>
+</div>
+
+<!-- ═══════ ORDER ITEMS ═══════ -->
+<div class="tab-panel" id="panel-orderitems">
+  <div class="form-card">
+    <h2>+ Add Order Item</h2>
+    <div class="form-grid">
+      <div class="field"><label>Order ID *</label><input id="oi-oid" type="number" placeholder="1"></div>
+      <div class="field"><label>Product ID *</label><input id="oi-pid" type="number" placeholder="11"></div>
+      <div class="field"><label>Unit Price</label><input id="oi-price" type="number" step="0.01" placeholder="14.00"></div>
+      <div class="field"><label>Quantity</label><input id="oi-qty" type="number" placeholder="12"></div>
+    </div>
+    <button class="btn-add" onclick="addOrderItem()">+ Add Order Item</button>
+  </div>
+  <div class="table-toolbar">
+    <span class="count" id="count-orderitems"><strong>0</strong> records</span>
+    <div class="table-toolbar-right">
+      <button class="btn-toolbar btn-clear-filters" data-tab="orderitems">✕ Clear Filters</button>
+      <a class="btn-toolbar btn-export" data-tab="orderitems" href="#">📥 Export CSV</a>
+    </div>
+  </div>
+  <div class="table-wrap"><div class="table-scroll">
+    <table id="table-orderitems" data-tab="orderitems">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="Id">ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="OrderId">Order ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="ProductId">Product ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="UnitPrice">Unit Price<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Quantity">Qty<span class="sort-arrow">▼</span></th>
+          <th></th>
+        </tr>
+        <tr class="filter-row">
+          <th><input class="filter-input" data-tab="orderitems" data-col="Id" placeholder="🔍 ID..."></th>
+          <th><input class="filter-input" data-tab="orderitems" data-col="OrderId" placeholder="🔍 Order ID..."></th>
+          <th><input class="filter-input" data-tab="orderitems" data-col="ProductId" placeholder="🔍 Product ID..."></th>
+          <th><input class="filter-input" data-tab="orderitems" data-col="UnitPrice" placeholder="🔍 Price..."></th>
+          <th><input class="filter-input" data-tab="orderitems" data-col="Quantity" placeholder="🔍 Qty..."></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-orderitems"></tbody>
+    </table>
+  </div></div>
+  <div class="pagination" id="pag-orderitems"></div>
+</div>
+
+<!-- ═══════ PRODUCTS ═══════ -->
+<div class="tab-panel" id="panel-products">
+  <div class="form-card">
+    <h2>+ Add Product</h2>
+    <div class="form-grid">
+      <div class="field"><label>Product Name *</label><input id="p-name" placeholder="Chai"></div>
+      <div class="field"><label>Supplier ID</label><input id="p-sid" type="number" placeholder="1"></div>
+      <div class="field"><label>Unit Price</label><input id="p-price" type="number" step="0.01" placeholder="18.00"></div>
+      <div class="field"><label>Package</label><input id="p-pkg" placeholder="10 boxes x 20 bags"></div>
+      <div class="field">
+        <label>Discontinued?</label>
+        <select id="p-disc"><option value="0">No</option><option value="1">Yes</option></select>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addProduct()">+ Add Product</button>
+  </div>
+  <div class="table-toolbar">
+    <span class="count" id="count-products"><strong>0</strong> records</span>
+    <div class="table-toolbar-right">
+      <button class="btn-toolbar btn-clear-filters" data-tab="products">✕ Clear Filters</button>
+      <a class="btn-toolbar btn-export" data-tab="products" href="#">📥 Export CSV</a>
+    </div>
+  </div>
+  <div class="table-wrap"><div class="table-scroll">
+    <table id="table-products" data-tab="products">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="Id">ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="ProductName">Product Name<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="SupplierId">Supplier<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="UnitPrice">Price<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Package">Package<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="IsDiscontinued">Disc.<span class="sort-arrow">▼</span></th>
+          <th></th>
+        </tr>
+        <tr class="filter-row">
+          <th><input class="filter-input" data-tab="products" data-col="Id" placeholder="🔍 ID..."></th>
+          <th><input class="filter-input" data-tab="products" data-col="ProductName" placeholder="🔍 Name..."></th>
+          <th><input class="filter-input" data-tab="products" data-col="SupplierId" placeholder="🔍 Supp..."></th>
+          <th><input class="filter-input" data-tab="products" data-col="UnitPrice" placeholder="🔍 Price..."></th>
+          <th><input class="filter-input" data-tab="products" data-col="Package" placeholder="🔍 Package..."></th>
+          <th><input class="filter-input" data-tab="products" data-col="IsDiscontinued" placeholder="🔍 0 or 1..."></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-products"></tbody>
+    </table>
+  </div></div>
+  <div class="pagination" id="pag-products"></div>
+</div>
+
+<!-- ═══════ SUPPLIERS ═══════ -->
+<div class="tab-panel" id="panel-suppliers">
+  <div class="form-card">
+    <h2>+ Add Supplier</h2>
+    <div class="form-grid">
+      <div class="field"><label>Company Name *</label><input id="s-comp" placeholder="Exotic Liquids"></div>
+      <div class="field"><label>Contact Name</label><input id="s-contact" placeholder="Charlotte Cooper"></div>
+      <div class="field"><label>Contact Title</label><input id="s-title" placeholder="Purchasing Manager"></div>
+      <div class="field"><label>City</label><input id="s-city" placeholder="London"></div>
+      <div class="field"><label>Country</label><input id="s-country" placeholder="UK"></div>
+      <div class="field"><label>Phone</label><input id="s-phone" placeholder="(171) 555-2222"></div>
+      <div class="field"><label>Fax</label><input id="s-fax" placeholder=""></div>
+    </div>
+    <button class="btn-add" onclick="addSupplier()">+ Add Supplier</button>
+  </div>
+  <div class="table-toolbar">
+    <span class="count" id="count-suppliers"><strong>0</strong> records</span>
+    <div class="table-toolbar-right">
+      <button class="btn-toolbar btn-clear-filters" data-tab="suppliers">✕ Clear Filters</button>
+      <a class="btn-toolbar btn-export" data-tab="suppliers" href="#">📥 Export CSV</a>
+    </div>
+  </div>
+  <div class="table-wrap"><div class="table-scroll">
+    <table id="table-suppliers" data-tab="suppliers">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="Id">ID<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="CompanyName">Company<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="ContactName">Contact<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="ContactTitle">Title<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="City">City<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Country">Country<span class="sort-arrow">▼</span></th>
+          <th class="sortable" data-col="Phone">Phone<span class="sort-arrow">▼</span></th>
+          <th></th>
+        </tr>
+        <tr class="filter-row">
+          <th><input class="filter-input" data-tab="suppliers" data-col="Id" placeholder="🔍 ID..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="CompanyName" placeholder="🔍 Company..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="ContactName" placeholder="🔍 Contact..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="ContactTitle" placeholder="🔍 Title..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="City" placeholder="🔍 City..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="Country" placeholder="🔍 Country..."></th>
+          <th><input class="filter-input" data-tab="suppliers" data-col="Phone" placeholder="🔍 Phone..."></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbl-suppliers"></tbody>
+    </table>
+  </div></div>
+  <div class="pagination" id="pag-suppliers"></div>
+</div>
+
+</div><!-- .main -->
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = window.location.origin;
+let currentTab = "dashboard";
+let searchTimers = {};
+let editingRow = null;
+const PAGE_SIZE = 50;
+
+// State per table: page, sort
+const state = {
+  customers:  { page: 1, sort: "Id", order: "DESC" },
+  orders:     { page: 1, sort: "Id", order: "DESC" },
+  orderitems: { page: 1, sort: "Id", order: "DESC" },
+  products:   { page: 1, sort: "Id", order: "DESC" },
+  suppliers:  { page: 1, sort: "Id", order: "DESC" },
+};
+
+const SCHEMA = {
+  customers: { fields: [
+    { key: "FirstName", type: "text" }, { key: "LastName", type: "text" },
+    { key: "City", type: "text" }, { key: "Country", type: "text" }, { key: "Phone", type: "text" }
+  ]},
+  orders: { fields: [
+    { key: "OrderNumber", type: "text" }, { key: "CustomerId", type: "number" },
+    { key: "TotalAmount", type: "number", step: "0.01" }
+  ]},
+  orderitems: { fields: [
+    { key: "OrderId", type: "number" }, { key: "ProductId", type: "number" },
+    { key: "UnitPrice", type: "number", step: "0.01" }, { key: "Quantity", type: "number" }
+  ]},
+  products: { fields: [
+    { key: "ProductName", type: "text" }, { key: "SupplierId", type: "number" },
+    { key: "UnitPrice", type: "number", step: "0.01" }, { key: "Package", type: "text" },
+    { key: "IsDiscontinued", type: "select", options: [{v:0,l:"No"},{v:1,l:"Yes"}] }
+  ]},
+  suppliers: { fields: [
+    { key: "CompanyName", type: "text" }, { key: "ContactName", type: "text" },
+    { key: "ContactTitle", type: "text" }, { key: "City", type: "text" },
+    { key: "Country", type: "text" }, { key: "Phone", type: "text" }
+  ]}
+};
+
+const COL_MAP = {
+  customers:  ["Id","FirstName","LastName","City","Country","Phone"],
+  orders:     ["Id","OrderDate","OrderNumber","CustomerId","TotalAmount"],
+  orderitems: ["Id","OrderId","ProductId","UnitPrice","Quantity"],
+  products:   ["Id","ProductName","SupplierId","UnitPrice","Package","IsDiscontinued"],
+  suppliers:  ["Id","CompanyName","ContactName","ContactTitle","City","Country","Phone"]
+};
+
+// ── TABS ──────────────────────────────
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    closeDropdowns(); cancelEdit();
+    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    currentTab = t.dataset.tab;
+    document.getElementById("panel-" + currentTab).classList.add("active");
+    if (currentTab === "dashboard") loadDashboard();
+    else loadTab(currentTab);
+  });
+});
+
+// ── COLUMN FILTER SETUP ───────────────
+document.querySelectorAll(".filter-input").forEach(input => {
+  input.addEventListener("input", () => {
+    const tab = input.dataset.tab;
+    input.classList.toggle("active", input.value.length > 0);
+    updateClearBtn(tab);
+    state[tab].page = 1; // reset to page 1 on new filter
+    clearTimeout(searchTimers[tab]);
+    searchTimers[tab] = setTimeout(() => loadTab(tab), 300);
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = ""; input.classList.remove("active");
+      const tab = input.dataset.tab;
+      updateClearBtn(tab); state[tab].page = 1; loadTab(tab);
+    }
+  });
+});
+
+document.querySelectorAll(".btn-clear-filters").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll(`.filter-input[data-tab="${tab}"]`).forEach(input => {
+      input.value = ""; input.classList.remove("active");
+    });
+    updateClearBtn(tab); state[tab].page = 1; loadTab(tab);
+  });
+});
+
+// ── SORTING ───────────────────────────
+document.querySelectorAll("th.sortable").forEach(th => {
+  th.addEventListener("click", () => {
+    const table = th.closest("table");
+    const tab = table.dataset.tab;
+    const col = th.dataset.col;
+    const s = state[tab];
+    if (s.sort === col) s.order = s.order === "ASC" ? "DESC" : "ASC";
+    else { s.sort = col; s.order = "ASC"; }
+    s.page = 1;
+    loadTab(tab);
+  });
+});
+
+function updateSortIndicators(tab) {
+  const s = state[tab];
+  document.querySelectorAll(`#table-${tab} th.sortable`).forEach(th => {
+    th.classList.remove("sort-asc", "sort-desc");
+    const arrow = th.querySelector(".sort-arrow");
+    if (th.dataset.col === s.sort) {
+      th.classList.add(s.order === "ASC" ? "sort-asc" : "sort-desc");
+      arrow.textContent = s.order === "ASC" ? "▲" : "▼";
+    } else {
+      arrow.textContent = "▼";
+    }
+  });
+}
+
+// ── EXPORT CSV ────────────────────────
+document.querySelectorAll(".btn-export").forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    const tab = btn.dataset.tab;
+    const params = buildFilterParams(tab);
+    params.append("sort", state[tab].sort);
+    params.append("order", state[tab].order);
+    window.location.href = `${API}/${tab}/export?${params.toString()}`;
+    toast("Downloading CSV...");
+  });
+});
+
+function buildFilterParams(tab) {
+  const params = new URLSearchParams();
+  document.querySelectorAll(`.filter-input[data-tab="${tab}"]`).forEach(input => {
+    const v = input.value.trim();
+    if (v) params.append(input.dataset.col, v);
+  });
+  return params;
+}
+
+function buildQueryString(tab) {
+  const params = buildFilterParams(tab);
+  params.append("sort", state[tab].sort);
+  params.append("order", state[tab].order);
+  params.append("page", state[tab].page);
+  params.append("limit", PAGE_SIZE);
+  return "?" + params.toString();
+}
+
+function updateClearBtn(tab) {
+  const anyActive = Array.from(document.querySelectorAll(`.filter-input[data-tab="${tab}"]`))
+    .some(inp => inp.value.trim().length > 0);
+  document.querySelector(`.btn-clear-filters[data-tab="${tab}"]`).classList.toggle("visible", anyActive);
+}
+
+function updateCount(tab, total) {
+  document.querySelector(`#count-${tab} strong`).textContent = total;
+}
+
+// ── PAGINATION ────────────────────────
+function renderPagination(tab, total) {
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const cur = state[tab].page;
+  const wrap = document.getElementById(`pag-${tab}`);
+  if (totalPages <= 1) { wrap.innerHTML = ""; return; }
+
+  let html = "";
+  html += `<button onclick="goToPage('${tab}', 1)" ${cur===1?"disabled":""} title="First">«</button>`;
+  html += `<button onclick="goToPage('${tab}', ${cur-1})" ${cur===1?"disabled":""}>‹ Prev</button>`;
+
+  // Show page number buttons (max 7 visible)
+  const maxBtn = 7;
+  let start = Math.max(1, cur - 3);
+  let end = Math.min(totalPages, start + maxBtn - 1);
+  if (end - start + 1 < maxBtn) start = Math.max(1, end - maxBtn + 1);
+
+  if (start > 1) html += `<button onclick="goToPage('${tab}', 1)">1</button>`;
+  if (start > 2) html += `<span class="page-info">…</span>`;
+  for (let i = start; i <= end; i++) {
+    html += `<button onclick="goToPage('${tab}', ${i})" class="${i===cur?'active':''}">${i}</button>`;
+  }
+  if (end < totalPages - 1) html += `<span class="page-info">…</span>`;
+  if (end < totalPages) html += `<button onclick="goToPage('${tab}', ${totalPages})">${totalPages}</button>`;
+
+  html += `<button onclick="goToPage('${tab}', ${cur+1})" ${cur===totalPages?"disabled":""}>Next ›</button>`;
+  html += `<button onclick="goToPage('${tab}', ${totalPages})" ${cur===totalPages?"disabled":""} title="Last">»</button>`;
+  html += `<span class="page-info">Page ${cur} of ${totalPages}</span>`;
+  wrap.innerHTML = html;
+}
+
+function goToPage(tab, p) {
+  state[tab].page = p;
+  loadTab(tab);
+}
+
+// ── TOAST ─────────────────────────────
+function toast(msg, type="success") {
+  const d = document.createElement("div");
+  d.className = "toast " + type;
+  d.textContent = msg;
+  document.getElementById("toasts").appendChild(d);
+  setTimeout(() => d.remove(), 3000);
+}
+
+// ── STATUS ────────────────────────────
+async function checkStatus() {
+  try {
+    await fetch(API + "/customers?limit=1");
+    document.getElementById("statusDot").classList.add("connected");
+    document.getElementById("statusText").textContent = "Connected";
+  } catch {
+    document.getElementById("statusDot").classList.remove("connected");
+    document.getElementById("statusText").textContent = "Disconnected";
+  }
+}
+
+// ── LOAD TABLE DATA ───────────────────
+async function loadTab(tab) {
+  const qs = buildQueryString(tab);
+  try {
+    const res = await fetch(API + "/" + tab + qs);
+    const json = await res.json();
+    if (json.error) { toast("Error loading: " + json.error, "error"); return; }
+    updateCount(tab, json.total);
+    updateSortIndicators(tab);
+    renderers[tab](json.rows);
+    renderPagination(tab, json.total);
+  } catch(e) { console.error(e); toast("Failed to load data.", "error"); }
+}
+
+// ── HELPERS ───────────────────────────
+function esc(s) { if (s === null || s === undefined) return ""; const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { if (s === null || s === undefined) return ""; return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+const USD_TO_INR = 83.50;
+function fmtMoney(n) { const inr=(n||0)*USD_TO_INR; return "₹" + inr.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function fmtNum(n) { return (n || 0).toLocaleString("en-US"); }
+function fmtDate(s) { if (!s) return ""; try { const d = new Date(s); if (isNaN(d)) return s; return d.toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" }); } catch { return s; } }
+
+function actionsCell(tab, id) {
+  return `<td class="actions-cell"><button class="btn-dots" onclick="toggleMenu(event, '${tab}', ${id})" title="More actions">⋮</button></td>`;
+}
+
+// ── RENDERERS ─────────────────────────
+const renderers = {
+  customers(rows) {
+    const tb = document.getElementById("tbl-customers");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon">👤</div>No customers found</div></td></tr>'; return; }
+    tb.innerHTML = rows.map(r => `<tr data-id="${r.Id}">
+      <td>${r.Id}</td><td>${esc(r.FirstName)}</td><td>${esc(r.LastName)}</td>
+      <td>${esc(r.City)}</td><td>${esc(r.Country)}</td><td>${esc(r.Phone)}</td>
+      ${actionsCell('customers', r.Id)}</tr>`).join("");
+  },
+  orders(rows) {
+    const tb = document.getElementById("tbl-orders");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">📦</div>No orders found</div></td></tr>'; return; }
+    tb.innerHTML = rows.map(r => `<tr data-id="${r.Id}">
+      <td>${r.Id}</td><td>${esc(fmtDate(r.OrderDate))}</td><td>${esc(r.OrderNumber)}</td>
+      <td>${r.CustomerId}</td><td>${fmtMoney(r.TotalAmount||0)}</td>
+      ${actionsCell('orders', r.Id)}</tr>`).join("");
+  },
+  orderitems(rows) {
+    const tb = document.getElementById("tbl-orderitems");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div>No order items found</div></td></tr>'; return; }
+    tb.innerHTML = rows.map(r => `<tr data-id="${r.Id}">
+      <td>${r.Id}</td><td>${r.OrderId}</td><td>${r.ProductId}</td>
+      <td>${fmtMoney(r.UnitPrice||0)}</td><td>${r.Quantity}</td>
+      ${actionsCell('orderitems', r.Id)}</tr>`).join("");
+  },
+  products(rows) {
+    const tb = document.getElementById("tbl-products");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon">🏷️</div>No products found</div></td></tr>'; return; }
+    tb.innerHTML = rows.map(r => `<tr data-id="${r.Id}">
+      <td>${r.Id}</td><td>${esc(r.ProductName)}</td><td>${r.SupplierId}</td>
+      <td>${fmtMoney(r.UnitPrice||0)}</td><td>${esc(r.Package)}</td>
+      <td>${r.IsDiscontinued ? "Yes" : "No"}</td>
+      ${actionsCell('products', r.Id)}</tr>`).join("");
+  },
+  suppliers(rows) {
+    const tb = document.getElementById("tbl-suppliers");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">🏭</div>No suppliers found</div></td></tr>'; return; }
+    tb.innerHTML = rows.map(r => `<tr data-id="${r.Id}">
+      <td>${r.Id}</td><td>${esc(r.CompanyName)}</td><td>${esc(r.ContactName)}</td>
+      <td>${esc(r.ContactTitle)}</td><td>${esc(r.City)}</td><td>${esc(r.Country)}</td>
+      <td>${esc(r.Phone)}</td>${actionsCell('suppliers', r.Id)}</tr>`).join("");
+  }
+};
+
+// ── DASHBOARD ─────────────────────────
+async function loadDashboard() {
+  try {
+    const res = await fetch(API + "/stats");
+    const data = await res.json();
+    if (data.error) { toast("Error: " + data.error, "error"); return; }
+
+    // Stat cards
+    const t = data.totals;
+    document.getElementById("stat-cards").innerHTML = `
+      <div class="stat-card accent"><div class="label">👤 Customers</div><div class="value">${fmtNum(t.customers)}</div></div>
+      <div class="stat-card green"><div class="label">📦 Orders</div><div class="value">${fmtNum(t.orders)}</div></div>
+      <div class="stat-card purple"><div class="label">🏷️ Products</div><div class="value">${fmtNum(t.products)}</div></div>
+      <div class="stat-card pink"><div class="label">🏭 Suppliers</div><div class="value">${fmtNum(t.suppliers)}</div></div>
+      <div class="stat-card yellow"><div class="label">💰 Total Revenue</div><div class="value">${fmtMoney(t.revenue)}</div></div>
+      <div class="stat-card teal"><div class="label">⚠️ Discontinued</div><div class="value">${fmtNum(t.discontinued)}</div></div>
+    `;
+
+    // Top customers
+    const tcEl = document.getElementById("top-customers");
+    if (data.top_customers.length === 0) tcEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No data yet</div>';
+    else tcEl.innerHTML = data.top_customers.map(c => `
+      <div class="dash-item">
+        <div class="name">${esc(c.Name) || "—"}</div>
+        <div class="meta">${c.OrderCount} orders</div>
+        <div class="val">${fmtMoney(c.Revenue)}</div>
+      </div>`).join("");
+
+    // Top products
+    const maxQty = Math.max(...data.top_products.map(p => p.Quantity), 1);
+    const tpEl = document.getElementById("top-products");
+    if (data.top_products.length === 0) tpEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No data yet</div>';
+    else tpEl.innerHTML = data.top_products.map(p => `
+      <div class="bar-row">
+        <div class="lbl">${esc(p.Name)}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${(p.Quantity/maxQty*100).toFixed(1)}%"></div></div>
+        <div class="num">${fmtNum(p.Quantity)}</div>
+      </div>`).join("");
+
+    // Customers by country
+    const maxCnt = Math.max(...data.customers_by_country.map(x => x.Count), 1);
+    const cbcEl = document.getElementById("customers-by-country");
+    if (data.customers_by_country.length === 0) cbcEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No data yet</div>';
+    else cbcEl.innerHTML = data.customers_by_country.map(c => `
+      <div class="bar-row">
+        <div class="lbl">${esc(c.Country)}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${(c.Count/maxCnt*100).toFixed(1)}%"></div></div>
+        <div class="num">${fmtNum(c.Count)}</div>
+      </div>`).join("");
+
+    // Recent orders
+    const roEl = document.getElementById("recent-orders").querySelector("tbody");
+    if (data.recent_orders.length === 0) roEl.innerHTML = '<tr><td style="color:var(--text-dim);">No orders yet</td></tr>';
+    else roEl.innerHTML = data.recent_orders.map(o => `
+      <tr>
+        <td style="color:var(--text-dim);">#${esc(o.OrderNumber)}</td>
+        <td class="cust">${esc(o.CustomerName)}</td>
+        <td style="color:var(--text-dim);">${esc(fmtDate(o.OrderDate))}</td>
+        <td class="amt">${fmtMoney(o.TotalAmount)}</td>
+      </tr>`).join("");
+
+  } catch(e) { console.error(e); toast("Failed to load dashboard.", "error"); }
+}
+
+// ── 3-DOT MENU ────────────────────────
+function toggleMenu(e, tab, id) {
+  e.stopPropagation();
+  closeDropdowns();
+  const btn = e.currentTarget;
+  if (btn.classList.contains("open")) { btn.classList.remove("open"); return; }
+  btn.classList.add("open");
+  const menu = document.createElement("div");
+  menu.className = "dropdown";
+  menu.innerHTML = `
+    <button onclick="startEdit('${tab}', ${id})">✏️ Edit</button>
+    <button class="danger" onclick="confirmDelete('${tab}', ${id})">🗑️ Delete</button>`;
+  btn.parentElement.appendChild(menu);
+}
+
+function closeDropdowns() {
+  document.querySelectorAll(".dropdown").forEach(d => d.remove());
+  document.querySelectorAll(".btn-dots.open").forEach(b => b.classList.remove("open"));
+}
+document.addEventListener("click", () => closeDropdowns());
+
+// ── EDIT MODE ─────────────────────────
+async function startEdit(tab, id) {
+  closeDropdowns(); cancelEdit();
+
+  let row;
+  try {
+    const res = await fetch(API + "/" + tab + "?Id=" + id + "&limit=10");
+    const json = await res.json();
+    row = (json.rows || []).find(r => r.Id === id);
+    if (!row) { toast("Record not found.", "error"); return; }
+  } catch { toast("Could not load record.", "error"); return; }
+
+  const tr = document.querySelector(`#tbl-${tab} tr[data-id="${id}"]`);
+  if (!tr) return;
+  tr.classList.add("editing");
+  editingRow = { tab, id };
+
+  const cells = tr.children;
+  const schema = SCHEMA[tab].fields;
+  const cols = COL_MAP[tab];
+
+  for (let i = 1; i < cols.length; i++) {
+    const colKey = cols[i];
+    const fieldDef = schema.find(f => f.key === colKey);
+    if (!fieldDef) continue;
+    const value = row[colKey];
+    let inputHtml;
+    if (fieldDef.type === "select") {
+      inputHtml = `<select class="edit-input" data-key="${colKey}">` +
+        fieldDef.options.map(o => `<option value="${o.v}" ${o.v == value ? "selected" : ""}>${o.l}</option>`).join("") + `</select>`;
+    } else {
+      const stepAttr = fieldDef.step ? `step="${fieldDef.step}"` : "";
+      inputHtml = `<input class="edit-input" type="${fieldDef.type}" ${stepAttr} data-key="${colKey}" value="${escAttr(value)}">`;
+    }
+    cells[i].innerHTML = inputHtml;
+  }
+
+  cells[cells.length - 1].innerHTML = `
+    <button class="btn-save" onclick="saveEdit('${tab}', ${id})" title="Save">✓</button>
+    <button class="btn-cancel" onclick="cancelEdit()" title="Cancel">✕</button>`;
+
+  const firstInput = tr.querySelector(".edit-input");
+  if (firstInput) { firstInput.focus(); firstInput.select && firstInput.select(); }
+}
+
+async function saveEdit(tab, id) {
+  const tr = document.querySelector(`#tbl-${tab} tr[data-id="${id}"]`);
+  if (!tr) return;
+  const inputs = tr.querySelectorAll(".edit-input");
+  const payload = {};
+  inputs.forEach(inp => {
+    const key = inp.dataset.key;
+    let v = inp.value;
+    if (inp.type === "number" || inp.tagName === "SELECT") {
+      v = v === "" ? 0 : (inp.step && inp.step !== "1" ? parseFloat(v) : parseInt(v));
+      if (isNaN(v)) v = 0;
+    }
+    payload[key] = v;
+  });
+
+  try {
+    const res = await fetch(API + "/" + tab + "/" + id, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Update failed");
+    }
+    editingRow = null;
+    toast("Updated!");
+    loadTab(tab);
+  } catch (e) { toast("Update failed: " + (e.message || ""), "error"); }
+}
+
+function cancelEdit() {
+  if (!editingRow) return;
+  const { tab } = editingRow;
+  editingRow = null;
+  loadTab(tab);
+}
+
+// ── DELETE ─────────────────────────────
+function confirmDelete(tab, id) {
+  closeDropdowns();
+  if (!confirm("Delete this record? This cannot be undone.")) return;
+  doDelete(tab, id);
+}
+async function doDelete(tab, id) {
+  try {
+    const res = await fetch(API + "/" + tab + "/" + id, { method: "DELETE" });
+    if (!res.ok) throw new Error();
+    toast("Deleted!");
+    loadTab(tab);
+  } catch { toast("Failed to delete.", "error"); }
+}
+
+// ── ADD FUNCTIONS ─────────────────────
+async function addCustomer() {
+  const fn = document.getElementById("c-fn").value.trim();
+  const ln = document.getElementById("c-ln").value.trim();
+  if (!fn || !ln) { toast("First Name and Last Name are required.", "error"); return; }
+  try {
+    const res = await fetch(API+"/customers", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ FirstName:fn, LastName:ln, City:document.getElementById("c-city").value.trim(), Country:document.getElementById("c-country").value.trim(), Phone:document.getElementById("c-phone").value.trim() }) });
+    if (!res.ok) throw new Error();
+    ["c-fn","c-ln","c-city","c-country","c-phone"].forEach(id => document.getElementById(id).value = "");
+    toast("Customer added!"); loadTab("customers");
+  } catch { toast("Failed to add customer.", "error"); }
+}
+
+async function addOrder() {
+  const num = document.getElementById("o-num").value.trim();
+  const cid = document.getElementById("o-cid").value.trim();
+  if (!num || !cid) { toast("Order Number and Customer ID are required.", "error"); return; }
+  try {
+    const res = await fetch(API+"/orders", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ OrderNumber:num, CustomerId:parseInt(cid), TotalAmount:parseFloat(document.getElementById("o-amt").value||0) }) });
+    if (!res.ok) throw new Error();
+    ["o-num","o-cid","o-amt"].forEach(id => document.getElementById(id).value = "");
+    toast("Order added!"); loadTab("orders");
+  } catch { toast("Failed to add order.", "error"); }
+}
+
+async function addOrderItem() {
+  const oid = document.getElementById("oi-oid").value.trim();
+  const pid = document.getElementById("oi-pid").value.trim();
+  if (!oid || !pid) { toast("Order ID and Product ID are required.", "error"); return; }
+  try {
+    const res = await fetch(API+"/orderitems", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ OrderId:parseInt(oid), ProductId:parseInt(pid), UnitPrice:parseFloat(document.getElementById("oi-price").value||0), Quantity:parseInt(document.getElementById("oi-qty").value||0) }) });
+    if (!res.ok) throw new Error();
+    ["oi-oid","oi-pid","oi-price","oi-qty"].forEach(id => document.getElementById(id).value = "");
+    toast("Order item added!"); loadTab("orderitems");
+  } catch { toast("Failed to add order item.", "error"); }
+}
+
+async function addProduct() {
+  const name = document.getElementById("p-name").value.trim();
+  if (!name) { toast("Product Name is required.", "error"); return; }
+  try {
+    const res = await fetch(API+"/products", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ ProductName:name, SupplierId:parseInt(document.getElementById("p-sid").value||0), UnitPrice:parseFloat(document.getElementById("p-price").value||0), Package:document.getElementById("p-pkg").value.trim(), IsDiscontinued:parseInt(document.getElementById("p-disc").value) }) });
+    if (!res.ok) throw new Error();
+    ["p-name","p-sid","p-price","p-pkg"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("p-disc").value = "0";
+    toast("Product added!"); loadTab("products");
+  } catch { toast("Failed to add product.", "error"); }
+}
+
+async function addSupplier() {
+  const comp = document.getElementById("s-comp").value.trim();
+  if (!comp) { toast("Company Name is required.", "error"); return; }
+  try {
+    const res = await fetch(API+"/suppliers", { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ CompanyName:comp, ContactName:document.getElementById("s-contact").value.trim(), ContactTitle:document.getElementById("s-title").value.trim(), City:document.getElementById("s-city").value.trim(), Country:document.getElementById("s-country").value.trim(), Phone:document.getElementById("s-phone").value.trim(), Fax:document.getElementById("s-fax").value.trim() }) });
+    if (!res.ok) throw new Error();
+    ["s-comp","s-contact","s-title","s-city","s-country","s-phone","s-fax"].forEach(id => document.getElementById(id).value = "");
+    toast("Supplier added!"); loadTab("suppliers");
+  } catch { toast("Failed to add supplier.", "error"); }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && editingRow) cancelEdit();
+});
+
+// ── INIT ──────────────────────────────
+checkStatus();
+loadDashboard();
+</script>
+</body>
+</html>
